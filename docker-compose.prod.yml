@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: course-platform-postgres
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-courses}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  app:
+    image: course-platform:latest
+    container_name: course-platform-app
+    restart: always
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-courses}
+      APP_URL: https://courses.ew-production.ru
+    volumes:
+      - ./content:/app/content
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.services.i-am-courses.loadbalancer.server.port=3000
+      - traefik.http.routers.i-am-courses.entrypoints=websecure
+      - traefik.http.routers.i-am-courses.rule=Host(`courses.ew-production.ru`)
+      - traefik.http.routers.i-am-courses.tls=true
+      - traefik.http.routers.i-am-courses.tls.certresolver=le
+    networks:
+      - internal
+      - proxy
+
+volumes:
+  postgres-data:
+
+networks:
+  internal:
+  proxy:
+    external: true
