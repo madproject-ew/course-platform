@@ -1,0 +1,316 @@
+---
+title: "Вёрстка доски задач в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Написание шаблона главной страницы приложения
+
+В нашем приложении предусмотрено несколько страниц — точек входа: страница авторизации, главная, страница администратора и другие.
+
+Для разделения логических модулей и точек входа мы будем использовать разные директории:
+
+*   module — для логических модулей;
+*   views — для точек входа или страниц.
+
+На текущем этапе нам достаточно одной точки входа. Создайте директорию `views` в директории `src`, а затем внутри неё — файл `HomeView.vue` со следующей разметкой:
+
+```html
+<template>
+    <main class="content">
+        <section class="desk">
+            <!--      Шапка доски-->
+
+            <!--      Колонки и задачи-->
+
+            <!--      Пустая доска-->
+        </section>
+    </main>
+</template>
+```
+
+Обратите внимание, что имена компонентов Vue состоят из нескольких слов: AppLayoutHeader, AppLayout, HomeView. Это не случайность — пользовательские компоненты являются специальными типами тегов, и их рекомендуется называть двумя и более словами, чтобы избежать конфликтов со встроенными компонентами вроде `transition` или `component`. Единственные исключения — встроенные компоненты и корневой компонент `root`.
+
+# Шаг 2. Вёрстка шапки доски
+
+Добавим в файл `HomeView.vue` разметку шапки:
+
+```html
+
+<div class="desk__header">
+    <h1 class="desk__title">Design Coffee Lab</h1>
+    <div class="desk__filters">
+        <div class="desk__user-filter">
+            <!--           Список пользователей-->
+        </div>
+        <div class="desk__meta-filter">
+            <!--            Список статусов-->
+        </div>
+    </div>
+</div>
+```
+
+Реализуем список пользователей:
+
+```html
+
+<ul class="user-filter">
+    <li class="user-filter__item">
+        <a class="user-filter__button">
+            <img
+                    src=""
+                    alt="Аватар юзера"
+                    width="24"
+                    height="24"
+            />
+        </a>
+    </li>
+</ul>
+```
+
+И список статусов:
+
+```html
+
+<ul class="meta-filter">
+    <li class="meta-filter__item">
+        <a class="meta-filter__status"/>
+    </li>
+</ul>
+```
+
+Полный код шапки доски:
+
+```html
+
+<div class="desk__header">
+    <h1 class="desk__title">Design Coffee Lab</h1>
+    <div class="desk__filters">
+        <div class="desk__user-filter">
+            <ul class="user-filter">
+                <li class="user-filter__item">
+                    <a class="user-filter__button">
+                        <img
+                                src=""
+                                alt="Аватар юзера"
+                                width="24"
+                                height="24"
+                        />
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="desk__meta-filter">
+            <ul class="meta-filter">
+                <li class="meta-filter__item">
+                    <a class="meta-filter__status"/>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+```
+
+Реальных списков пользователей и статусов у нас пока нет. При добавлении логики мы воспользуемся моковыми данными для формирования этих списков.
+
+# Шаг 3. Вёрстка колонок и задач
+
+Добавим в файл `HomeView.vue` колонки с задачами.
+
+Сначала опишем вёрстку колонок.
+
+```html
+<div class="desk__columns">
+    <div class="column">
+        <h2 class="column__name">Название колонки</h2>
+        <div class="column__target-area">
+            <!--            Задачи-->
+        </div>
+    </div>
+</div>
+```
+
+Добавим задачу внутрь колонки:
+
+```html
+<div class="column__task">
+    <div class="task">
+        <div class="task__user">
+            <div class="task__avatar">
+                <img
+                        src=""
+                        alt="задача"
+                        width="20"
+                        height="20"
+                />
+            </div>
+            Пользователь задачи
+        </div>
+
+        <div class="task__statuses">
+            <span class="task__status"/>
+            <span class="task__status"/>
+        </div>
+
+        <h5 class="task__title">
+            Наименование задачи
+        </h5>
+        <ul class="task__tags">
+            <li>
+                  <span class="tag tag--blue">
+                    Тег задачи
+                  </span>
+            </li>
+        </ul>
+    </div>
+</div>
+```
+
+Колонка с задачей в итоге должна выглядеть так:
+
+```html
+<div class="desk__columns">
+    <div class="column">
+        <h2 class="column__name">Название колонки</h2>
+        <div class="column__target-area">
+            <div class="column__task">
+                <div class="task">
+                    <div class="task__user">
+                        <div class="task__avatar">
+                            <img
+                                    src=""
+                                    alt="задача"
+                                    width="20"
+                                    height="20"
+                            />
+                        </div>
+                        Пользователь задачи
+                    </div>
+
+                    <div class="task__statuses">
+                        <span class="task__status"/>
+                        <span class="task__status"/>
+                    </div>
+
+                    <h5 class="task__title">
+                        Наименование задачи
+                    </h5>
+                    <ul class="task__tags">
+                        <li>
+                  <span class="tag tag--blue">
+                    Тег задачи
+                  </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+# Шаг 4. Добавление блока пустой доски
+
+Добавим разметку блока для случая, когда колонки и задачи отсутствуют.
+
+```html
+<p class="desk__emptiness">
+    Пока нет ни одной колонки
+</p>
+```
+
+# Шаг 5. Окончательная вёрстка доски задач
+
+Пример финальной вёрстки файла `HomeView.vue`:
+
+```html
+
+<template>
+    <main class="content">
+        <section class="desk">
+            <!--      Шапка доски-->
+            <div class="desk__header">
+                <h1 class="desk__title">Design Coffee Lab</h1>
+                <div class="desk__filters">
+                    <div class="desk__user-filter">
+                        <ul class="user-filter">
+                            <li class="user-filter__item">
+                                <a class="user-filter__button">
+                                    <img
+                                            src=""
+                                            alt="Аватар юзера"
+                                            width="24"
+                                            height="24"
+                                    />
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="desk__meta-filter">
+                        <ul class="meta-filter">
+                            <li class="meta-filter__item">
+                            <a class="meta-filter__status"/>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!--      Колонки и задачи-->
+            <div class="desk__columns">
+                <div class="column">
+                    <h2 class="column__name">Название колонки</h2>
+                    <div class="column__target-area">
+                        <div class="column__task">
+                            <div class="task">
+                                <div class="task__user">
+                                    <div class="task__avatar">
+                                        <img
+                                                src=""
+                                                alt="задача"
+                                                width="20"
+                                                height="20"
+                                        />
+                                    </div>
+                                    Пользователь задачи
+                                </div>
+
+                                <div class="task__statuses">
+                                    <span class="task__status"/>
+                                    <span class="task__status"/>
+                                </div>
+
+                                <h5 class="task__title">
+                                    Наименование задачи
+                                </h5>
+                                <ul class="task__tags">
+                                    <li>
+                                <span class="tag tag--blue">
+                                    Тег задачи
+                                </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!--      Пустая доска-->
+            <p class="desk__emptiness">
+                Пока нет ни одной колонки
+            </p>
+        </section>
+    </main>
+</template>
+```
+
+# Шаг 6. Точка входа для файлов views
+
+Добавим файл `index.js`, который будет экспортировать содержимое директории `views`:
+
+```javascript
+export { default as HomeView } from "./HomeView.vue";
+```
+
+> Подробнее ознакомиться с используемой конструкцией вы можете [здесь](https://learn.javascript.ru/import-export).
+

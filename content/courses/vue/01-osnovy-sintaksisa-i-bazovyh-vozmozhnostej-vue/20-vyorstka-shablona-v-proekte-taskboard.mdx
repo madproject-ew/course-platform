@@ -1,0 +1,183 @@
+---
+title: "Вёрстка шаблона в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Написание шаблона приложения
+
+Начнём с создания шаблона (layout) проекта. В директории `src` добавьте директорию `layouts`.
+
+# Шаг 2. Создание шапки приложения
+
+В директории `layouts` создайте файл `AppLayoutHeader.vue` и добавьте `template`.
+
+Для начала напишем каркас шапки:
+
+```html
+
+<template>
+    <header class="header">
+
+        <!--    Логотип-->
+
+        <!--    Поиск-->
+
+        <!--    Кнопка создания новой задачи-->
+
+        <!--    Аватар пользователя-->
+
+        <!--    Панель пользователя-->
+    </header>
+</template>
+```
+
+Реализуем код логотипа:
+
+```html
+
+<div class="header__logo">
+    <a href="#" class="logo">
+        <img
+                src="@/assets/img/logo.svg"
+                alt="TaskBoard logo"
+                width="147"
+                height="23"
+        />
+    </a>
+</div>
+```
+
+Добавим панель поиска:
+
+```html
+
+<form action="#" class="header__search">
+    <input type="search" name="search" required placeholder="Поиск"/>
+    <button type="submit">Найти</button>
+</form>
+```
+
+Кнопка создания новой задачи:
+
+```html
+<a href="#" class="header__create-task">Создать карточку</a>
+```
+
+Аватар пользователя:
+
+```html
+<a href="#" class="header__user">
+    <img
+            src="@/assets/img/admin.jpg"
+            alt="Администратор"
+            width="40"
+            height="40"
+    />
+</a>
+```
+
+Меню пользователя:
+
+```html
+
+<div class="header__menu">
+    <div class="user-menu">
+        <img
+                src="@/assets/img/admin.jpg"
+                width="56"
+                height="56"
+                alt="Администратор"
+        />
+        <span>Администратор</span>
+        <a href="#" class="user-menu__link">Мой аккаунт</a>
+        <a href="#" class="user-menu__link">Выйти</a>
+    </div>
+</div>
+```
+
+Итоговый код компонента выглядит так:
+
+```html
+
+<template>
+    <header class="header">
+        <div class="header__logo">
+            <a href="#" class="logo">
+                <img
+                        src="@/assets/img/logo.svg"
+                        alt="TaskBoard logo"
+                        width="147"
+                        height="23"
+                />
+            </a>
+        </div>
+
+        <form action="#" class="header__search">
+            <input type="search" name="search" required placeholder="Поиск"/>
+            <button type="submit">Найти</button>
+        </form>
+
+        <a href="#" class="header__create-task">Создать карточку</a>
+
+        <a href="#" class="header__user">
+            <img
+                    src="@/assets/img/admin.jpg"
+                    alt="Администратор"
+                    width="40"
+                    height="40"
+            />
+        </a>
+
+        <div class="header__menu">
+            <div class="user-menu">
+                <img
+                        src="@/assets/img/admin.jpg"
+                        width="56"
+                        height="56"
+                        alt="Администратор"
+                />
+                <span>Администратор</span>
+                <a href="#" class="user-menu__link">Мой аккаунт</a>
+                <a href="#" class="user-menu__link">Выйти</a>
+            </div>
+        </div>
+    </header>
+</template>
+```
+
+Данный компонент будет выполнять роль шапки приложения.
+
+На текущем этапе в нём отсутствуют логика и стили. Мы добавим их в последующих демонстрациях.
+
+# Шаг 3. Создание компонента шаблона
+
+В директории `layouts` создайте файл `AppLayout.vue` и добавьте `template`:
+
+```html
+
+<template>
+    <div class="app_layout">
+        <app-layout-header/>
+        <slot/>
+    </div>
+</template>
+```
+
+С концепцией слотов (slot) мы ещё не знакомы — подробно разберём их во втором разделе.
+
+`app-layout-header` — пользовательский компонент, созданный на предыдущем шаге. Подключим его при реализации логики.
+
+# Шаг 4. Добавление точки входа для компонентов
+
+Для лучшей структуры проекта вынесем логические элементы в отдельную директорию — это упростит работу с файлами и сделает проект удобнее в поддержке.
+
+При работе с шаблоном (layout) все связанные файлы размещаются в одной директории. Для единообразного доступа ко всем файлам директории используется файл `index.js`.
+
+Создайте этот файл и добавьте экспорт нашего шаблона:
+
+```javascript
+export { default as AppLayout } from "./AppLayout.vue";
+```
+
+> Подробнее ознакомиться с используемой конструкцией вы можете [здесь](https://learn.javascript.ru/import-export).
+

@@ -1,0 +1,423 @@
+---
+title: "Добавление мок-данных в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление мок-файлов
+
+Работа с сервером начнётся только в пятом разделе, поэтому на данном этапе необходимо подготовить файлы с данными, которые будут использоваться в компонентах.
+
+Нам потребуется информация о колонках, задачах и пользователях.
+
+# Шаг 2. Добавление мок-пользователей
+
+Создайте директорию `mocks` в `src` и добавьте файл `users.json`. Заполните его массивом объектов пользователей со следующими атрибутами:
+
+*   id — идентификатор;
+*   name — имя;
+*   email — адрес электронной почты;
+*   isAdmin — признак администратора;
+*   avatar — аватар.
+
+Ниже приведён пример массива пользователей. Вы можете скопировать его или подготовить собственные данные.
+
+```json
+[
+  {
+    "id": "cdr09037-1569-4542-as83-gt5d34a48c33",
+    "name": "Администратор",
+    "email": "admin@example.com",
+    "isAdmin": true,
+    "avatar": "admin.jpg"
+  },
+  {
+    "id": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+    "name": "Василий Ложкин",
+    "email": "vasia@example.com",
+    "isAdmin": false,
+    "avatar": "user5.jpg"
+  },
+  {
+    "id": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+    "name": "Сергей Есенин",
+    "email": "seresen@example.com",
+    "isAdmin": false,
+    "avatar": "user2.jpg"
+  },
+  {
+    "id": "b6009037-1d39-4452-8883-cc4c34a48c33",
+    "name": "Алексей Яшин",
+    "email": "yashin@example.com",
+    "isAdmin": false,
+    "avatar": "user3.jpg"
+  },
+  {
+    "id": "9a655ecf-0966-4c81-aad9-e0b707cb73e8",
+    "name": "Игорь Пятин",
+    "email": "five@example.com",
+    "isAdmin": false,
+    "avatar": "user6.jpg"
+  },
+  {
+    "id": "059d070d-9d48-4120-af9d-6028cdae0e5a",
+    "name": "Елена Шаповалова",
+    "email": "six@example.com",
+    "isAdmin": false,
+    "avatar": "user1.jpg"
+  },
+  {
+    "id": "a8e98a44-41ae-46bb-8cf4-cba932c463e5",
+    "name": "Андрей Ильин",
+    "email": "seven@example.com",
+    "isAdmin": false,
+    "avatar": "user7.jpg"
+  },
+  {
+    "id": "55f2968a-cc2b-42e2-b918-be3c973bf546",
+    "name": "Диана Аверина",
+    "email": "eight@example.com",
+    "isAdmin": false,
+    "avatar": "user4.jpg"
+  }
+]
+
+```
+
+# Шаг 3. Добавление мок-колонок
+
+Добавьте файл `columns.json` в директорию `mocks`. Заполните его массивом объектов колонок со следующими атрибутами:
+
+*   id — идентификатор;
+*   title — наименование колонки.
+
+Пример массива колонок:
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Запланировано"
+  },
+  {
+    "id": 2,
+    "title": "В работе"
+  },
+  {
+    "id": 3,
+    "title": "На проверке"
+  },
+  {
+    "id": 4,
+    "title": "Выполнено"
+  },
+  {
+    "id": 5,
+    "title": "На удаление"
+  }
+]
+```
+
+# Шаг 4. Добавление мок-задач
+
+Добавьте файл `tasks.json` в директорию `mocks`. Заполните его массивом объектов задач со следующими атрибутами:
+
+*   id — идентификатор;
+*   title — наименование;
+*   sortOrder — порядок отображения в колонке;
+*   dueDate — срок выполнения;
+*   tags — метки задачи;
+*   columnId — идентификатор колонки, к которой относится задача;
+*   userId — идентификатор пользователя, ответственного за задачу.
+
+Пример массива задач:
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Задача № 1",
+    "sortOrder": 0,
+    "dueDate": null,
+    "tags": "",
+    "columnId": null,
+    "statusId": null,
+    "userId": null
+  },
+  {
+    "id": 2,
+    "title": "Задача № 2",
+    "sortOrder": 0,
+    "dueDate": null,
+    "tags": "#Фронтенд#Для вёрстки#Бэкенд",
+    "columnId": 1,
+    "statusId": 1,
+    "userId": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+    "user": {
+      "id": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+      "name": "Василий Ложкин",
+      "avatar": "user5.jpg"
+    }
+  },
+  {
+    "id": 3,
+    "title": "Задача № 3",
+    "sortOrder": 0,
+    "dueDate": null,
+    "tags": "#Дизайн",
+    "columnId": 2,
+    "statusId": 2,
+    "userId": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+    "user": {
+      "id": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+      "name": "Сергей Есенин",
+      "avatar": "user2.jpg"
+    }
+  },
+  {
+    "id": 4,
+    "title": "Задача № 4",
+    "sortOrder": 0,
+    "dueDate": null,
+    "tags": "#Бэкенд#Фронтенд#Срочно",
+    "columnId": 3,
+    "statusId": null,
+    "userId": "b6009037-1d39-4452-8883-cc4c34a48c33",
+    "user": {
+      "id": "b6009037-1d39-4452-8883-cc4c34a48c33",
+      "name": "Алексей Яшин",
+      "avatar": "user3.jpg"
+    }
+  },
+  {
+    "id": 5,
+    "title": "Задача № 5",
+    "sortOrder": 1,
+    "dueDate": null,
+    "tags": "#Дизайн",
+    "columnId": null,
+    "statusId": 1,
+    "userId": "9a655ecf-0966-4c81-aad9-e0b707cb73e8",
+    "user": {
+      "id": "9a655ecf-0966-4c81-aad9-e0b707cb73e8",
+      "name": "Игорь Пятин",
+      "avatar": "user6.jpg"
+    }
+  },
+  {
+    "id": 6,
+    "title": "Задача № 6",
+    "sortOrder": 1,
+    "dueDate": null,
+    "tags": "#Срочно#Для вёрстки#Бэкенд",
+    "columnId": 1,
+    "statusId": 2,
+    "userId": "059d070d-9d48-4120-af9d-6028cdae0e5a",
+    "user": {
+      "id": "059d070d-9d48-4120-af9d-6028cdae0e5a",
+      "name": "Елена Шаповалова",
+      "avatar": "user1.jpg"
+    }
+  },
+  {
+    "id": 7,
+    "title": "Задача № 7",
+    "sortOrder": 1,
+    "dueDate": null,
+    "tags": "#Фронтенд#Срочно#Срочно",
+    "columnId": 2,
+    "statusId": null,
+    "userId": "a8e98a44-41ae-46bb-8cf4-cba932c463e5",
+    "user": {
+      "id": "a8e98a44-41ae-46bb-8cf4-cba932c463e5",
+      "name": "Андрей Ильин",
+      "avatar": "user7.jpg"
+    }
+  },
+  {
+    "id": 8,
+    "title": "Задача № 8",
+    "sortOrder": 1,
+    "dueDate": "2022-01-13T11:40:01.000Z",
+    "tags": "",
+    "columnId": 3,
+    "statusId": 1,
+    "userId": "55f2968a-cc2b-42e2-b918-be3c973bf546",
+    "user": {
+      "id": "55f2968a-cc2b-42e2-b918-be3c973bf546",
+      "name": "Диана Аверина",
+      "avatar": "user4.jpg"
+    }
+  },
+  {
+    "id": 9,
+    "title": "Задача № 9",
+    "sortOrder": 2,
+    "dueDate": null,
+    "tags": "#Дизайн",
+    "columnId": null,
+    "statusId": 2,
+    "userId": null
+  },
+  {
+    "id": 10,
+    "title": "Задача № 10",
+    "sortOrder": 2,
+    "dueDate": null,
+    "tags": "",
+    "columnId": 1,
+    "statusId": null,
+    "userId": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+    "user": {
+      "id": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+      "name": "Василий Ложкин",
+      "avatar": "user5.jpg"
+    }
+  },
+  {
+    "id": 11,
+    "title": "Задача № 11",
+    "sortOrder": 2,
+    "dueDate": null,
+    "tags": "#Бэкенд#Дизайн#Дизайн",
+    "columnId": 2,
+    "statusId": 1,
+    "userId": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+    "user": {
+      "id": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+      "name": "Сергей Есенин",
+      "avatar": "user2.jpg"
+    }
+  },
+  {
+    "id": 12,
+    "title": "Задача № 12",
+    "sortOrder": 2,
+    "dueDate": null,
+    "tags": "#Фронтенд#Дизайн",
+    "columnId": 3,
+    "statusId": 2,
+    "userId": "b6009037-1d39-4452-8883-cc4c34a48c33",
+    "user": {
+      "id": "b6009037-1d39-4452-8883-cc4c34a48c33",
+      "name": "Алексей Яшин",
+      "avatar": "user3.jpg"
+    }
+  },
+  {
+    "id": 13,
+    "title": "Задача № 13",
+    "sortOrder": 3,
+    "dueDate": null,
+    "tags": "#Дизайн",
+    "columnId": null,
+    "statusId": null,
+    "userId": "9a655ecf-0966-4c81-aad9-e0b707cb73e8",
+    "user": {
+      "id": "9a655ecf-0966-4c81-aad9-e0b707cb73e8",
+      "name": "Игорь Пятин",
+      "avatar": "user6.jpg"
+    }
+  },
+  {
+    "id": 14,
+    "title": "Задача № 14",
+    "sortOrder": 3,
+    "dueDate": null,
+    "tags": "#Дизайн",
+    "columnId": 1,
+    "statusId": 1,
+    "userId": "059d070d-9d48-4120-af9d-6028cdae0e5a",
+    "user": {
+      "id": "059d070d-9d48-4120-af9d-6028cdae0e5a",
+      "name": "Елена Шаповалова",
+      "avatar": "user1.jpg"
+    }
+  },
+  {
+    "id": 15,
+    "title": "Задача № 15",
+    "sortOrder": 3,
+    "dueDate": null,
+    "tags": "#Для вёрстки#Бэкенд#Срочно#Фронтенд",
+    "columnId": 2,
+    "statusId": 2,
+    "userId": "a8e98a44-41ae-46bb-8cf4-cba932c463e5",
+    "user": {
+      "id": "a8e98a44-41ae-46bb-8cf4-cba932c463e5",
+      "name": "Андрей Ильин",
+      "avatar": "user7.jpg"
+    }
+  },
+  {
+    "id": 16,
+    "title": "Задача № 16",
+    "sortOrder": 3,
+    "dueDate": null,
+    "tags": "#Фронтенд",
+    "columnId": 3,
+    "statusId": null,
+    "userId": "55f2968a-cc2b-42e2-b918-be3c973bf546",
+    "user": {
+      "id": "55f2968a-cc2b-42e2-b918-be3c973bf546",
+      "name": "Диана Аверина",
+      "avatar": "user4.jpg"
+    }
+  },
+  {
+    "id": 17,
+    "title": "Задача № 17",
+    "sortOrder": 4,
+    "dueDate": null,
+    "tags": "",
+    "columnId": null,
+    "statusId": 1,
+    "userId": null
+  },
+  {
+    "id": 18,
+    "title": "Задача № 18",
+    "sortOrder": 4,
+    "dueDate": "2021-01-08T11:40:01.000Z",
+    "tags": "",
+    "columnId": 1,
+    "statusId": 2,
+    "userId": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+    "user": {
+      "id": "7c7a4c48-3896-4353-b050-c8e50b967e8f",
+      "name": "Василий Ложкин",
+      "avatar": "user5.jpg"
+    }
+  },
+  {
+    "id": 19,
+    "title": "Задача № 19",
+    "sortOrder": 4,
+    "dueDate": "2021-01-08T11:40:01.000Z",
+    "tags": "",
+    "columnId": 2,
+    "statusId": null,
+    "userId": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+    "user": {
+      "id": "86aea12a-9dbf-4e8f-856a-cad238dd66c5",
+      "name": "Сергей Есенин",
+      "avatar": "user2.jpg"
+    }
+  },
+  {
+    "id": 20,
+    "title": "Задача № 20",
+    "sortOrder": 4,
+    "dueDate": "2022-01-13T11:40:01.000Z",
+    "tags": "",
+    "columnId": 3,
+    "statusId": 1,
+    "userId": "b6009037-1d39-4452-8883-cc4c34a48c33",
+    "user": {
+      "id": "b6009037-1d39-4452-8883-cc4c34a48c33",
+      "name": "Алексей Яшин",
+      "avatar": "user3.jpg"
+    }
+  }
+]
+```
+

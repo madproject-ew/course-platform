@@ -1,0 +1,110 @@
+---
+title: "Добавление логики для компонента счётчика"
+type: demo
+---
+
+# Шаг 1. Добавление блока script
+
+Продолжаем работу с компонентом `DemoCounter.vue`. Теперь необходимо реализовать логику его работы.
+
+Для этого добавим блок `<script>`:
+
+```html
+<script setup>
+
+</script>
+```
+
+# Шаг 2. Добавление логики работы счётчика
+
+Для хранения значения воспользуемся реактивной переменной, созданной с помощью `ref`.
+
+```html
+<script setup>
+import { ref } from 'vue'
+
+const count = ref(0)
+</script>
+```
+
+Теперь добавим методы для изменения значения `count`.
+
+```html
+<script setup>
+import { ref } from 'vue'
+
+const count = ref(0)
+
+/* Метод уменьшения значения */
+const decrement = () => {
+  count.value = count.value - 1
+}
+
+/* Метод увеличения значения */
+const increment = () => {
+  count.value = count.value + 1
+}
+</script>
+```
+
+# Шаг 3. Связывание логики с шаблоном
+
+Осталось связать созданные методы с шаблоном: при нажатии на кнопки `+` и `-` должны вызываться `increment` и `decrement` соответственно. Для этого укажем их как обработчики события `@click`.
+
+```html
+<template>
+    <div class="counter">
+        <button @click="decrement"> - </button>
+
+        <span> Current value: 0 </span>
+
+        <button @click="increment"> + </button>
+    </div>
+</template>
+```
+
+Для отображения текущего значения переменной `count` воспользуемся Mustache-синтаксисом.
+
+```html
+<template>
+    <div class="counter">
+        <button @click="decrement"> - </button>
+
+        <span> Current value: {{ count }} </span>
+
+        <button @click="increment"> + </button>
+    </div>
+</template>
+```
+
+# Шаг 4. Окончательный вид компонента счётчика
+
+Компонент готов и должен выглядеть следующим образом:
+
+```html
+<template>
+    <div class="counter">
+        <button @click="decrement"> - </button>
+
+        <span> Current value: {{ count }} </span>
+
+        <button @click="increment"> + </button>
+    </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const count = ref(0)
+
+const decrement = () => {
+  count.value = count.value - 1
+}
+
+const increment = () => {
+  count.value = count.value + 1
+}
+</script>
+```
+
+Запустите проект командой `npm run dev` в директории `demo` и проверьте результат.

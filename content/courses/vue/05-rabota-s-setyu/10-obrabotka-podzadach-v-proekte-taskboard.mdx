@@ -1,0 +1,232 @@
+---
+title: "Обработка подзадач в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание хранилища подзадач
+
+В базе данных подзадачи хранятся в отдельной таблице и связаны с задачами отношением «один ко многим» (one to many). Это значит, что у одной задачи может быть несколько подзадач, но каждая подзадача относится ровно к одной задаче.
+
+Создадим хранилище подзадач, которое будет работать через соответствующий сервис.
+
+Создайте файл `src/stores/ticks.js`:
+
+```javascript
+import { defineStore } from 'pinia'
+import { ticksService } from '@/services'
+
+export const useTicksStore = defineStore('ticks', {
+	state: () => ({
+		ticks: [],
+	}),
+	getters: {
+		getTicksByTaskId: state => taskId => state.ticks.filter(tick => tick.taskId === taskId)
+	},
+	actions: {
+		async fetchTicks () {
+			this.ticks = await ticksService.fetchTicks()
+		},
+		async addTick (tick) {
+			const newTick = await ticksService.createTick(tick)
+			this.ticks.push(newTick)
+		},
+		async updateTick (tick) {
+			await ticksService.updateTick(tick)
+			const index = this.ticks.findIndex(({ id }) => id === tick.id)
+			if (~index) {
+				this.ticks.splice(index, 1, tick)
+			}
+		},
+		async deleteTick (id) {
+			await ticksService.deleteTick(id)
+			this.ticks = this.ticks.filter(tick => tick.id !== id)
+		}
+	},
+})
+```
+
+Добавим экспорт в `index.js`:
+
+```javascript
+export { useUsersStore } from './users'
+export { useTasksStore } from './tasks'
+export { useColumnsStore } from './columns'
+export { useFiltersStore } from './filters'
+export { useAuthStore } from './auth'
+export { useCommentsStore } from './comments'
+export { useTicksStore } from './ticks'
+```
+
+Подключим загрузку подзадач в `src/App.vue`:
+
+```javascript
+import { useTasksStore, useColumnsStore, useUsersStore, useCommentsStore, useTicksStore } from './stores'
+
+// ...
+const ticksStore = useTicksStore()
+// ...
+// Загружаем подзадачи
+void ticksStore.fetchTicks()
+```
+
+# Шаг 2. Получение задачи по идентификатору
+
+После создания хранилища подзадач нужно привязать их к конкретным задачам. Начнём с написания геттера `getTaskById` в хранилище задач:
+
+```javascript
+import { useUsersStore, useFiltersStore, useTicksStore } from '@/stores'
+
+// ...
+
+getTaskById: state => id => {
+	const ticksStore = useTicksStore()
+	const usersStore = useUsersStore()
+	const task = state.tasks.find(task => task.id == id)
+	if (!task) return null
+	// Добавляем подзадачи
+	task.ticks = ticksStore.getTicksByTaskId(task.id)
+	// Добавляем пользователя
+	task.user = usersStore.users.find(user => user.id === task.userId)
+	return task
+}
+```
+
+Этот геттер используется в двух случаях: при просмотре деталей задачи и при её редактировании.
+
+Применим его в файлах `TaskView.vue` и `TaskEdit.vue`:
+
+`TaskView.vue`:
+
+```javascript
+const task = computed(() => {
+	return tasksStore.getTaskById(route.params.id)
+})
+```
+
+`TaskEdit.vue`:
+
+```javascript
+// Находим задачу в массиве задач по id из строки URL
+const task = tasksStore.getTaskById(route.params.id)
+```
+
+В файле `TaskView.vue` также заменим `getImage` на `getPublicImage` для отображения аватара:
+
+```html
+Участник:
+<div class="task-card__participant">
+    <button
+            type="button"
+            class="task-card__user"
+    >
+        <img
+                :src="getPublicImage(task.user.avatar)"
+                :alt="task.user.name"
+        />
+        {{ task.user.name }}
+    </button>
+</div>
+```
+
+Кроме того, в `TaskView.vue` нужно ограничить доступ к кнопке редактирования задачи -- она должна быть видна только администраторам.
+
+Подключим `authStore` и добавим условие:
+
+```html
+<template>
+<!--    ...-->
+  <!--Кнопка редактирования задачи-->
+  <a
+      v-if="authStore.getUserAttribute('isAdmin')"
+      class="task-card__edit"
+      @click="router.push({
+        name: 'TaskEdit',
+        params: { id: $route.params.id }
+      })"
+  >
+<!--    ...-->
+</template>
+
+<script setup>
+// ...
+    import { useTasksStore, useAuthStore } from '@/stores'
+
+const tasksStore = useTasksStore()
+const authStore = useAuthStore()
+// ...
+</script>
+```
+
+# Шаг 3. Изменение компонента TaskCardCreator
+
+Внесём изменения в файл `src/modules/tasks/components/TaskCardCreator.vue`.
+
+Подключим хранилище подзадач:
+
+```javascript
+import { useTasksStore, useTicksStore } from '@/stores'
+
+// ...
+
+// Определяем хранилище задач
+const tasksStore = useTasksStore()
+const ticksStore = useTicksStore()
+```
+
+Напишем метод `submitTicks`, который будет создавать и обновлять подзадачи при сохранении задачи:
+
+```javascript
+async function submitTicks (taskId, ticks) {
+  const promises = ticks
+      .map(tick => {
+        if (!tick.text) {
+          return
+        }
+        delete tick.uuid
+        tick.taskId = taskId
+        return tick.id
+            ? ticksStore.updateTick(tick)
+            : ticksStore.addTick(tick)
+      })
+  await Promise.all(promises)
+}
+```
+
+Обновим метод `submit`:
+
+```javascript
+async function submit () {
+  // Валидируем задачу
+  if (!validateFields(task.value, validations.value)) {
+    isFormValid.value = false
+    return
+  }
+  let taskId = task.value.id
+  if (props.taskToEdit) {
+    // Редактируемая задача
+    await tasksStore.editTask(task.value)
+  } else {
+    // Новая задача
+    const newTask = await tasksStore.addTask(task.value)
+    taskId = newTask.id
+  }
+  // Создать или обновить подзадачи
+  await submitTicks(taskId, task.value.ticks)
+  // Переход на главную страницу
+  await router.push('/')
+}
+```
+
+Добавим удаление подзадач в метод `removeTick`:
+
+```javascript
+function removeTick ({ uuid, id }) {
+  if (uuid) {
+    task.value.ticks = task.value.ticks.filter(tick => tick.uuid !== uuid)
+  }
+  if (id) {
+    task.value.ticks = task.value.ticks.filter(tick => tick.id !== id)
+    ticksStore.deleteTick(id)
+  }
+}
+```

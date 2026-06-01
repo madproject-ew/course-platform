@@ -1,0 +1,105 @@
+---
+title: "Реализация drag-and-drop в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление компонента AppDrag.vue
+
+В этой демонстрации мы создадим компоненты, отвечающие за реализацию drag-and-drop.
+
+Создайте компонент `AppDrag.vue` в директории `common/components` и добавьте шаблон:
+
+```html
+<template>
+  <div
+    :draggable="true"
+    @dragstart.self="onDrag"
+    @dragover.prevent
+    @dragenter.prevent
+  >
+    <slot />
+  </div>
+</template>
+```
+
+Шаблон содержит `div`-элемент, который отслеживает событие `dragstart` и вызывает метод `onDrag`. Компонент также предотвращает стандартное поведение при `dragover` и `dragenter`.
+
+# Шаг 2. Добавление констант для drag-and-drop
+
+Для работы drag-and-drop добавим несколько дополнительных констант в конец файла `common/constants.js`:
+
+```javascript
+// ... Предыдущие константы
+
+export const MOVE = 'move';
+export const DATA_TRANSFER_PAYLOAD = 'payload';
+```
+
+# Шаг 3. Добавление логики в компонент AppDrag.vue
+
+Добавим блок `script` в компонент `AppDrag.vue`:
+
+```html
+<script setup>
+import { DATA_TRANSFER_PAYLOAD, MOVE } from '../constants'
+
+const props = defineProps({
+  transferData: {
+    type: Object,
+    required: true
+  }
+})
+
+function onDrag({ dataTransfer }) {
+  dataTransfer.effectAllowed = MOVE;
+  dataTransfer.dropEffect = MOVE;
+  dataTransfer.setData(
+    DATA_TRANSFER_PAYLOAD,
+    JSON.stringify(props.transferData)
+  );
+}
+</script>
+```
+
+Метод `onDrag` помещает данные о переносимом объекте в `DataTransfer`. Подробнее о `DataTransfer` можно прочитать [на MDN](https://developer.mozilla.org/ru/docs/Web/API/DataTransfer).
+
+# Шаг 4. Добавление компонента AppDrop.vue
+
+Создайте компонент `AppDrop.vue` в директории `common/components` и добавьте шаблон:
+
+```html
+<template>
+  <div
+    @drop.stop="onDrop"
+    @dragover.prevent
+    @dragenter.prevent
+  >
+    <slot />
+  </div>
+</template>
+```
+
+# Шаг 5. Добавление логики в компонент AppDrop.vue
+
+Добавим блок `script` в компонент `AppDrop.vue`:
+
+```html
+<script setup>
+import { DATA_TRANSFER_PAYLOAD } from '../constants'
+
+const emit = defineEmits(['drop'])
+
+function onDrop({ dataTransfer }) {
+  if (!dataTransfer) {
+    return;
+  }
+  const payload = dataTransfer.getData(DATA_TRANSFER_PAYLOAD);
+  if (payload) {
+    const transferData = JSON.parse(dataTransfer.getData(DATA_TRANSFER_PAYLOAD));
+    emit('drop', transferData);
+  }
+}
+</script>
+```
+
+`AppDrag` и `AppDrop` — компоненты-обёртки. Мы оборачиваем ими другие компоненты, чтобы добавить функциональность drag-and-drop.

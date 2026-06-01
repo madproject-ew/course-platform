@@ -1,0 +1,158 @@
+---
+title: "Анимация маршрутов"
+type: demo
+---
+
+# Шаг 1. Установка animate.css
+
+Рассмотрим, как подключить библиотеку `animate.css` и организовать анимированную смену маршрутов.
+
+> Подробную документацию по animate.css можно найти на [официальном сайте библиотеки](https://animate.style/).
+
+Для этой демонстрации потребуется новый Vue-проект с маршрутизатором. Создайте новый Vue-проект с помощью Vite, затем установите `animate.css`:
+
+```bash
+npm install animate.css
+```
+
+После установки подключите библиотеку в файле `main.js`:
+
+```javascript
+// ...
+import 'animate.css'
+// ...
+```
+
+# Шаг 2. Добавление навигации
+
+Добавим навигационные ссылки и настроим переход в файле `App.vue`:
+
+```html
+
+<template>
+    <div class="container">
+        <router-link class="link" to="/component-a">Component A</router-link>
+        |
+        <router-link class="link" to="/component-b">Component B</router-link>
+    </div>
+    <router-view v-slot="{ Component }">
+        <transition
+                name="view"
+                appear
+                enter-active-class="animate__animated animate__bounceInRight"
+        >
+            <component :is="Component" />
+        </transition>
+    </router-view>
+</template>
+
+<style scoped>
+    .container {
+        margin: 20px;
+    }
+
+    .link {
+        border-bottom: 1px solid #343838FF;
+        color: #343838FF;
+        padding-bottom: .25rem;
+        text-decoration: none;
+    }
+</style>
+```
+
+Свойство `appear` обеспечивает применение анимации при первоначальной отрисовке компонента. Классы `animate__animated` и `animate__bounceInRight` предоставляются библиотекой `animate.css`.
+
+Анимация при смене маршрутов задана через свойство `enter-active-class`. Для тонкой настройки переходов доступен полный набор свойств:
+
+*   `enter-from-class`;
+*   `enter-active-class`;
+*   `enter-to-class`;
+*   `leave-from-class`;
+*   `leave-active-class`;
+*   `leave-to-class`.
+
+Благодаря этим свойствам можно гибко настроить любую анимацию, в том числе с использованием сторонних CSS-библиотек.
+
+# Шаг 3. Добавление компонентов и маршрутов
+
+Осталось создать два компонента и подключить их к маршрутизатору. Создайте файлы `src/views/ComponentA.vue` и `src/views/ComponentB.vue`.
+
+ComponentA:
+
+```html
+<template>
+  <div class="card">Привет, Я компонент А</div>
+</template>
+
+<style scoped>
+.card {
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+  transition: 0.3s;
+  width: 300px;
+  height: 100px;
+  background-color: #20375e;
+  border-radius: 10px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card:hover {
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+}
+</style>
+```
+
+ComponentB:
+
+```html
+<template>
+  <div class="card">Привет, компонент Б это я</div>
+</template>
+
+<style scoped>
+.card {
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+  transition: 0.3s;
+  width: 300px;
+  height: 100px;
+  background-color: #9c1d00;
+  border-radius: 10px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card:hover {
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+}
+</style>
+```
+
+Подключите компоненты в конфигурации маршрутизатора:
+
+```javascript
+import { createRouter, createWebHistory } from "vue-router";
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: "/component-a",
+      name: "ComponentA",
+      component: () => import("./views/ComponentA.vue"),
+    },
+    {
+      path: "/component-b",
+      name: "ComponentB",
+      component: () => import("./views/ComponentB.vue"),
+    },
+  ],
+});
+
+export default router;
+```
+
+Теперь при переходе между страницами будет воспроизводиться анимация.

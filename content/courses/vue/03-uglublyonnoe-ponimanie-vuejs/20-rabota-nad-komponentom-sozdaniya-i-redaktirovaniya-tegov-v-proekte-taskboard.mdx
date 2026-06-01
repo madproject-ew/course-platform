@@ -1,0 +1,215 @@
+---
+title: "Работа над компонентом создания и редактирования тегов в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление компонента для создания и редактирования тегов
+
+Компонент отображения тегов уже создан. Теперь нужна возможность создавать и редактировать теги при работе с задачами.
+
+Создайте два компонента --- `TaskCardCreatorTags.vue` и `TaskCardCreatorTagsAnalyzer.vue` --- в директории `src/modules/tasks/components`.
+
+# Шаг 2. Работа над анализатором тегов
+
+Компонент `TaskCardCreatorTagsAnalyzer` отвечает за отображение и редактирование тегов без использования стандартного `input`. Для построения его интерфейса мы применим рендер-функцию.
+
+Шаблон содержит единственный элемент `render`:
+
+```html
+<template>
+  <render/>
+</template>
+```
+
+Вся логика и визуализация компонента реализована в блоке `script`:
+
+```html
+<script setup>
+import { h, ref, watch } from 'vue'
+import { uniq } from 'lodash'
+import { TAG_SEPARATOR } from '@/common/constants'
+import { getTagsArrayFromString } from '@/common/helpers'
+
+const props = defineProps({
+  tags: {
+    type: String,
+    required: true
+  }
+})
+const emits = defineEmits(['setTags'])
+
+// Разделяем строку тегов на массив
+const splitTags = props.tags ? ref(getTagsArrayFromString(props.tags)) : ref([])
+
+watch(
+    () => props.tags,
+    (tags) => {
+      splitTags.value = getTagsArrayFromString(tags)
+    }
+)
+
+async function setTags (tags) {
+  emits('setTags', tags.trim(), true)
+}
+
+const render = () => {
+  // Создаем дочерние элементы с тегами
+  const elements = splitTags.value.map(tag => {
+    return h(
+        'span',
+        {
+          class: { tag: true }
+        },
+        `${TAG_SEPARATOR}${tag}`
+    )
+  })
+
+  const updateTags = event => {
+    // Удаляем дубликаты
+    const uniqValues = uniq(
+        event.target.textContent
+            .split(TAG_SEPARATOR)
+    )
+    setTags(uniqValues.join(TAG_SEPARATOR))
+  }
+
+  return h(
+      'div',
+      {
+        contentEditable: true,
+        class: {
+          analyzer: true
+        },
+        style: {
+          outline: 'none',
+          minHeight: '42px'
+        },
+        onFocus: () => {
+          emits('setTags', `${props.tags}#`, false)
+        },
+        onBlur: event => updateTags(event),
+        onKeydown: event => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            updateTags(event)
+          }
+        },
+        ref: 'analyzer'
+      },
+      elements
+  )
+}
+</script>
+```
+
+# Шаг 3. Создание компонента для обработки тегов
+
+Шаблон компонента `TaskCardCreatorTags`:
+
+```html
+<template>
+  <div class="task-card__tags">
+    <div class="task-card__tags--text">
+      Добавьте теги, разделённые символом #
+    </div>
+    <task-card-creator-tags-analyzer
+        v-if="showAnalyzer"
+        class="task-card__tags-analyzer"
+        :tags="tags"
+        @setTags="setTags"
+    />
+  </div>
+</template>
+```
+
+Логика:
+
+```html
+<script setup>
+import { ref } from 'vue'
+import TaskCardCreatorTagsAnalyzer from './TaskCardCreatorTagsAnalyzer.vue'
+
+const props = defineProps({
+  tags: {
+    type: String,
+    required: true
+  }
+})
+const emits = defineEmits(['setTags'])
+
+const showAnalyzer = ref(true)
+const timeout = ref(null)
+
+function setTags(tags, refresh) {
+  if (refresh) {
+    // При обновлении тегов очищаем текущую строку
+    showAnalyzer.value = false
+    emits('setTags', tags)
+    // Обновляем анализатор за минимальное время
+    timeout.value = setTimeout(() => {
+      showAnalyzer.value = true
+      clearTimeout(timeout.value)
+    })
+  } else {
+    emits('setTags', tags)
+  }
+}
+</script>
+```
+
+Стили:
+
+```html
+<style lang="scss" scoped>
+@import "@/assets/scss/app.scss";
+
+.task-card__tags {
+  &-analyzer {
+    box-sizing: border-box;
+    padding: 8px;
+
+    color: $blue-gray-600;
+    border: 1px solid $gray-100;
+    border-radius: 6px;
+    outline: none;
+
+    @include r-s14-h21;
+  }
+
+  &--text {
+    padding: 10px 0;
+
+    color: $blue-gray-600;
+
+    @include r-s10-h12;
+  }
+}
+</style>
+```
+
+# Шаг 4. Подключение компонента к TaskCardCreator
+
+Интегрируем компонент тегов в `TaskCardCreator`:
+
+```html
+<!--...-->
+<!--      Блок тегов-->
+  <div class="task-card__block">
+<!--        Компонент создания тегов-->
+    <task-card-creator-tags
+        :tags="task.tags"
+        @setTags="setTags"
+    />
+  </div>
+<!--...-->
+
+<script setup>
+// ...
+import TaskCardCreatorTags from './TaskCardCreatorTags.vue'
+// ...
+
+function setTags (tags) {
+  task.value.tags = tags
+}
+</script>
+```

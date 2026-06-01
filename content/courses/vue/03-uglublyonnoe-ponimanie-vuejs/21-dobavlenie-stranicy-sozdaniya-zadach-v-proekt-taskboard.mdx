@@ -1,0 +1,121 @@
+---
+title: "Добавление страницы создания задач в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление страницы создания задач
+
+Создайте компонент `TaskCreate.vue` в директории `src/views`. Он использует ранее разработанный `TaskCardCreator`:
+
+```html
+<template>
+  <task-card-creator @add-task="$emit('addTask', $event)" />
+</template>
+
+<script setup>
+import TaskCardCreator from '../modules/tasks/components/TaskCardCreator.vue'
+
+defineEmits(['addTask'])
+</script>
+```
+
+# Шаг 2. Обработчики в App.vue
+
+Добавим обработчик `add-task` в корневой компонент, где хранится массив задач:
+
+```html
+<template>
+  <app-layout
+      :tasks="filteredTasks"
+      :filters="state.filters"
+      @update-tasks="updateTasks"
+  >
+    <router-view
+        :tasks="filteredTasks"
+        :filters="state.filters"
+        @update-tasks="updateTasks"
+        @apply-filters="applyFilters"
+        @add-task="addTask"
+    />
+  </app-layout>
+</template>
+
+<script setup>
+import users from './mocks/users.json'
+// ...
+function getTaskUserById (id) {
+  return users.find(user => user.id === id)
+}
+
+// Создаём новую задачу и добавляем в массив задач
+function addTask (task) {
+  // Нормализуем задачу
+  const newTask = normalizeTask(task)
+  // Добавляем идентификатор, последний элемент в списке задач
+  // После подключения сервера идентификатор будет присваиваться сервером
+  newTask.id = state.tasks.length + 1
+  // Добавляем задачу в конец списка задач в бэклоге
+  newTask.sortOrder = state.tasks.filter(task => !task.columnId).length
+  // Если задаче присвоен исполнитель, то добавляем объект пользователя в задачу
+  // Это будет добавлено сервером позже
+  if (newTask.userId) {
+    newTask.user = { ...getTaskUserById(newTask.userId) }
+  }
+  // Добавляем задачу в массив
+  state.tasks = [...state.tasks, newTask]
+}
+</script>
+```
+
+Также необходимо пробросить событие в промежуточном компоненте `HomeView`:
+
+```html
+      <!--      Отображение дочерних маршрутов-->
+      <router-view
+          :tasks="props.tasks"
+          @add-task="$emit('addTask', $event)"
+      />
+```
+
+# Шаг 3. Подключение компонента к маршрутизатору
+
+Добавим маршрут в файл `src/router/routes.js`:
+
+```javascript
+export default [
+	{
+		path: '/',
+		name: 'HomeView',
+		component: () => import('../views/HomeView.vue'),
+		meta: { layout: 'AppLayoutMain' },
+		children: [
+			{
+				path: '/:id',
+				name: 'TaskView',
+				component: () => import('../views/TaskView.vue'),
+				meta: { layout: 'AppLayoutMain' }
+			},
+			{
+				path: '/tasks/create',
+				name: 'TaskCreate',
+				component: () => import('../views/TaskCreate.vue'),
+				meta: { layout: 'AppLayoutMain' }
+			}
+		]
+	}
+]
+```
+
+# Шаг 4. Обработчик перехода на страницу создания задачи
+
+Переход на страницу создания задачи происходит при нажатии на кнопку «Создать задачу» в шапке. В файле `AppLayoutHeader` замените:
+
+```html
+<a href="#" class="header__create-task">Создать карточку</a>
+```
+
+на:
+
+```html
+<router-link to="/tasks/create" class="header__create-task">Создать карточку</router-link>
+```

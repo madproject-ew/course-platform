@@ -1,0 +1,293 @@
+---
+title: "Отрисовка списков. Взаимодействие между v-for и v-if"
+type: article
+quiz:
+  - question: "Почему нельзя использовать v-if и v-for на одном элементе?"
+    type: single
+    options:
+      - "Это вызывает бесконечный цикл рендеринга"
+      - "v-if имеет более высокий приоритет и итерационная переменная ещё не определена"
+      - "v-for блокирует работу v-if"
+      - "Такой синтаксис не поддерживается парсером Vue"
+    answer: 1
+  - question: "Зачем нужен атрибут key при использовании v-for?"
+    type: single
+    options:
+      - "Для сортировки элементов в списке"
+      - "Для идентификации элементов и поддержания внутреннего состояния при обновлении DOM"
+      - "Для доступа к элементам через JavaScript"
+      - "Для привязки CSS-стилей к элементам списка"
+    answer: 1
+  - question: "Как лучше отображать отфильтрованный список, не изменяя исходный массив?"
+    type: single
+    options:
+      - "Использовать v-if внутри v-for для фильтрации"
+      - "Создать вычисляемое свойство (computed) с отфильтрованным массивом"
+      - "Использовать метод splice для удаления ненужных элементов"
+      - "Применить директиву v-filter к массиву"
+    answer: 1
+---
+
+# Отрисовка списков. Взаимодействие между v-for и v-if
+
+Для вывода списка элементов во Vue предусмотрена специальная директива `v-for`. Допустим, у нас есть такой список:
+
+```xml
+<ul class="list">
+  <li class="item">
+    {{ user1.name }}
+  </li>
+  <li class="item">
+    {{ user2.name }}
+  </li>
+  <li class="item">
+    {{ user3.name }}
+  </li>
+</ul>
+```
+
+Количество элементов в нём может меняться динамически — элементы можно добавлять или удалять.
+
+С помощью `v-for` этот список можно представить следующим образом:
+
+```xml
+<template>
+    <ul class="list">
+      <li
+        v-for="user in list"
+        class="item"
+      >
+        {{ user.name }}
+      </li>
+    </ul>
+</template>
+<script setup>
+    const list = [
+        { name: 'Иван' },
+        { name: 'Мария' }
+    ]
+</script>
+```
+
+Директива `v-for` перебирает массив пользователей, и в результате количество элементов списка соответствует числу элементов в массиве.
+
+У `v-for` есть второй необязательный параметр — индекс элемента. Получить его можно так:
+
+```xml
+<ul class="list">
+  <li
+    v-for="(user, index) in list"
+    class="item"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+`user` и `index` доступны во всех вложенных элементах внутри `v-for`.
+
+Вместо ключевого слова `in` допускается использовать `of`:
+
+```xml
+<li v-for="user of list">
+...
+</li>
+```
+
+Помимо массивов, `v-for` позволяет перебирать свойства объекта. Предположим, мы используем объект `user`:
+
+```javascript
+object: {
+  id: 1,
+  name: 'User Test',
+  email: 'test@gmail.com'
+}
+```
+
+Значения свойств объекта можно вывести списком следующим образом:
+
+```xml
+<template>
+  <ul class="list">
+    <li
+      v-for="value in obj"
+      class="item"
+    >
+      {{ value }}
+    </li>
+  </ul>
+</template>
+
+<script setup>
+  const obj = {
+    id: 1,
+    name: 'User Test',
+    email: 'test@gmail.com'
+  }
+</script>
+```
+
+При итерации по объекту доступны два дополнительных параметра: ключ свойства и индекс:
+
+```xml
+<ul class="list">
+  <li
+    v-for="(value, key, index) in obj"
+    class="item"
+  >
+   {{ index }} - {{ key }} - {{ value }}
+  </li>
+</ul>
+```
+
+Названия параметров `value`, `key` и `index` выбраны для наглядности — их можно заменить на любые другие.
+
+Для идентификации каждого элемента списка необходимо указывать атрибут `key`:
+
+```xml
+<ul class="list">
+  <li
+    v-for="user in list"
+    :key="user.id"
+    class="item"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+Если список динамический, уникальный `id` элемента — оптимальный выбор для `key`. Если список статический и у элементов нет `id`, можно воспользоваться индексом.
+
+> Всегда указывайте атрибут `key` с `v-for`. Исключение — когда итерируемый контент DOM прост или вы сознательно применяете стратегию обновления по умолчанию для повышения [производительности](https://vuejs.org/guide/essentials/list.html#maintaining-state-with-key).
+
+## Отображение отфильтрованных и отсортированных результатов
+
+Иногда список необходимо отсортировать или отфильтровать. В таких случаях лучше не изменять исходный массив, а создать на его основе новый с помощью вычисляемого свойства:
+
+Options API
+
+```javascript
+<script>
+export default {
+  data() {
+    return {
+      originalList: [
+        { id: 1, visible: true },
+        { id: 2, visible: false }
+      ]
+    }
+  },
+  computed: {
+    filteredList() {
+      return this.originalList.filter(item => item.visible)
+    }
+  }
+}
+</script>
+```
+
+Composition API
+
+```javascript
+<script setup>
+import { reactive, computed } from 'vue'
+
+const originalList = reactive([
+  { id: 1, visible: true },
+  { id: 2, visible: false }
+])
+
+const filteredList = computed(() => originalList.filter(item => item.visible))
+</script>
+```
+
+Далее в шаблоне используется отфильтрованный список. Если создать вычисляемое свойство невозможно, можно вызвать метод непосредственно в шаблоне:
+
+```xml
+<ul class="list">
+  <li
+    v-for="user in filterList(list)"
+    :key="user.id"
+    class="item"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+Нередко возникает необходимость на основе свойств элемента списка выполнить определённую логику — например, сформировать набор CSS-классов. Это тоже реализуется через вызов метода:
+
+```xml
+<ul class="list">
+  <li
+    v-for="user in list"
+    :key="user.id"
+    class="item"
+    :class="getItemClasses(user)"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+## Генерация уникальных ID
+
+В версии Vue 3.5 появилась встроенная функция `useId`. Она позволяет создавать уникальные идентификаторы, которые остаются стабильными при повторном рендеринге.
+
+```javascript
+<script>
+import { useId } from 'vue'
+const id = useId()
+</script>
+
+<template>
+  <form>
+    <label :for="id">Name:</label>
+    <input :id="id" type="text">
+  </form>
+</template>
+```
+
+## v-for и диапазоны
+
+В директиву можно передать целое число, и тогда элемент будет отрисован указанное количество раз:
+
+```xml
+<ul class="list">
+  <li v-for="n in 10">
+    {{ n }}
+  </li>
+</ul>
+```
+
+## v-for и тег template
+
+Когда внутри `v-for` нужно отрисовать несколько элементов без дополнительной обёртки, используйте тег `<template>`:
+
+```xml
+<ul class="list">
+  <template v-for="user in list">
+    <li>{{ user.name }}</li>
+    <li class="info">Дополнительная информация...</li>
+  </template>
+</ul>
+```
+
+## v-for и v-if
+
+**Важно**: не используйте эти директивы на одном элементе, поскольку приоритет `v-if` выше, чем у `v-for`. Подробнее об этом описано в [документации](https://vuejs.org/guide/essentials/list.html#v-for-with-v-if).
+
+## Компоненты и v-for
+
+Директива совместима с пользовательскими компонентами:
+
+```xml
+<ul class="list">
+  <my-user-component
+    v-for="user in list"
+    :key="user.id"
+    class="item"
+    :user="user"
+  />
+</ul>
+```

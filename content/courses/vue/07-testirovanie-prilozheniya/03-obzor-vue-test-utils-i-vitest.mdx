@@ -1,0 +1,75 @@
+---
+title: "Обзор Vue Test Utils и Vitest"
+type: article
+quiz:
+  - question: "В какой среде по умолчанию выполняются тесты Vitest для Vue-компонентов?"
+    type: single
+    options:
+      - "В реальном браузере Chrome"
+      - "В среде JSDom"
+      - "В среде Node.js без DOM"
+      - "В среде Puppeteer"
+    answer: 1
+  - question: "С каким тестовым фреймворком совместим синтаксис проверок Vitest?"
+    type: single
+    options:
+      - "Mocha"
+      - "Jasmine"
+      - "Jest"
+      - "Cypress"
+    answer: 2
+---
+
+# Обзор Vue Test Utils и Vitest
+
+Для тестирования Vue-компонентов мы будем использовать два основных инструмента:
+
+*   [Vue Test Utils](https://test-utils.vuejs.org/) — библиотека утилит для тестирования Vue-компонентов.
+*   [Vitest](https://vitest.dev/) — фреймворк для сборки и запуска тестов, а также для выполнения проверок (assertions). Его синтаксис проверок полностью совместим с [Jest](https://jestjs.io/).
+
+Если вы откроете файл конфигурации `vite.config.js` или `vitest.config.js` в своём проекте, то обнаружите в нём настройку тестовой среды:
+
+```javascript
+test: {
+  environment: "jsdom"
+}
+```
+
+Это означает, что тесты будут выполняться в среде [JSDom](https://github.com/jsdom/jsdom) — реализации DOM API для Node.js, что позволяет запускать тесты без браузера.
+
+В файле `package.json` обычно присутствует команда `"test:unit": "vitest"`, так что запуск тестов осуществляется командой `npm run test:unit`.
+
+Пример конфигурации Vitest в файле `vite.config.js`:
+
+```javascript
+import { fileURLToPath, URL } from 'url'
+
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [vue()],
+	test: {
+		environment: 'jsdom',
+	},
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  },
+  server: {
+    host: true,
+    port: 5173,
+	  proxy: {
+      "/api": {
+        target: "https://api.example.com/",
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
+  }
+})
+
+```
+
+Файлы тестов могут располагаться как в глобальной директории `tests`, так и в отдельных директориях `__test__` рядом с тестируемыми компонентами и утилитами. Тестовые файлы именуются с постфиксом `.spec.js` или `.test.js`.

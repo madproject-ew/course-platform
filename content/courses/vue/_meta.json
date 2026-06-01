@@ -1,0 +1,49 @@
+{
+  "title": "Vue 3. Разработка клиентских приложений",
+  "description": "Полный курс по Vue 3: от основ синтаксиса и компонентов до менеджера состояния, работы с сетью, анимаций и тестирования.",
+  "slug": "vue",
+  "highlights": ["Vue 3", "Composition API", "Pinia", "Vue Router", "Vitest"],
+  "modulesCount": 8,
+  "modules": [
+    {
+      "number": 1,
+      "title": "Основы синтаксиса и базовых возможностей Vue",
+      "slug": "01-osnovy-sintaksisa-i-bazovyh-vozmozhnostej-vue"
+    },
+    {
+      "number": 2,
+      "title": "Взаимодействие между компонентами Vue.js",
+      "slug": "02-vzaimodejstvie-mezhdu-komponentami-vuejs"
+    },
+    {
+      "number": 3,
+      "title": "Углублённое понимание Vue.js",
+      "slug": "03-uglublyonnoe-ponimanie-vuejs"
+    },
+    {
+      "number": 4,
+      "title": "Менеджер состояния",
+      "slug": "04-menedzher-sostoyaniya"
+    },
+    {
+      "number": 5,
+      "title": "Работа с сетью",
+      "slug": "05-rabota-s-setyu"
+    },
+    {
+      "number": 6,
+      "title": "Анимации во Vue.js",
+      "slug": "06-animacii-vo-vuejs"
+    },
+    {
+      "number": 7,
+      "title": "Тестирование приложения",
+      "slug": "07-testirovanie-prilozheniya"
+    },
+    {
+      "number": 8,
+      "title": "Итоговый раздел",
+      "slug": "08-itogovyj-razdel"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+---
+title: "Установка Pinia"
+type: article
+quiz:
+  - question: "В каком порядке нужно подключить Pinia к приложению Vue?"
+    type: single
+    options:
+      - "createApp -> mount -> createPinia -> app.use(pinia)"
+      - "createPinia -> createApp -> app.use(pinia) -> mount"
+      - "createApp -> createPinia -> app.use(pinia) -> mount"
+      - "createPinia -> mount -> createApp -> app.use(pinia)"
+    answer: 2
+---
+
+# Установка Pinia
+
+Рассмотрим процесс установки Pinia — эти знания пригодятся для реальных проектов.
+
+Для установки потребуется пакетный менеджер: npm, yarn или pnpm. Покажем на примере npm:
+
+```bash
+npm install pinia
+```
+
+После установки нужно создать экземпляр Pinia и подключить его к приложению Vue:
+
+```javascript
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+
+const pinia = createPinia()
+const app = createApp(App)
+
+app.use(pinia)
+app.mount('#app')
+```
+
+После этого Pinia готова к использованию в приложении.

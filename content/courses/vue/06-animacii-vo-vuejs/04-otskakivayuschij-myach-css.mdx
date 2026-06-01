@@ -1,0 +1,100 @@
+---
+title: "Отскакивающий мяч CSS"
+type: demo
+---
+
+# Шаг 1. Создание шаблона
+
+В этом примере мы поэкспериментируем с анимацией масштабирования при появлении и удалении изображения.
+
+Для начала создадим вспомогательный компонент `DemoButton.vue`, который будем использовать в демонстрациях:
+
+```javascript
+<template>
+  <button>
+    <slot />
+  </button>
+</template>
+
+<style scoped>
+button {
+  appearance: none;
+  background-color: #008a9c;
+  border: 1px solid rgba(27, 31, 35, .15);
+  border-radius: 6px;
+  box-shadow: rgba(27, 31, 35, .1) 0 1px 0;
+  box-sizing: border-box;
+  color: #fff;
+  cursor: pointer;
+  display: inline-block;
+  margin: 20px;
+  font-family: -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  padding: 6px 16px;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+</style>
+```
+
+Теперь подготовим шаблон основного компонента:
+
+```html
+
+<template>
+    <demo-button @click="show = !show">Показать</demo-button>
+    <br>
+    <transition name="bounce">
+        <img v-if="show" src="@/assets/ball.png" alt="img">
+    </transition>
+</template>
+```
+
+Путь к изображению может быть произвольным. В данном случае мы используем картинку мяча из директории `assets`.
+
+# Шаг 2. Добавление переменных
+
+Добавим реактивное свойство, управляющее отображением и скрытием картинки:
+
+```html
+<script setup>
+import DemoButton from './DemoButton.vue'
+import { ref } from 'vue'
+
+const show = ref(true)
+</script>
+```
+
+# Шаг 3. Добавление CSS-классов
+
+Для активации анимации добавим соответствующие CSS-классы:
+
+```html
+<style scoped>
+.bounce-enter-active {
+  animation: bounce-in .5s;
+}
+.bounce-leave-active {
+  animation: bounce-in .5s reverse;
+}
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+</style>
+```

@@ -1,0 +1,359 @@
+---
+title: "Замена мок-данных на данные с сервера в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Изменение хранилища колонок
+
+Настало время заменить получение данных из статичных файлов на запросы к серверу.
+
+Замените содержимое файла `src/stores/columns.js`:
+
+```javascript
+import { defineStore } from 'pinia'
+import { columnsService } from '@/services'
+
+export const useColumnsStore = defineStore('columns', {
+	state: () => ({
+		columns: [],
+	}),
+	getters: {},
+	actions: {
+		async fetchColumns () {
+			this.columns = await columnsService.fetchColumns()
+		},
+		async addColumn () {
+			// При создании колонки мы добавляем дефолтную колонку, которую можем изменить позже
+			const newColumn = await columnsService.createColumn({ title: 'Новый столбец'})
+			this.columns.push(newColumn)
+		},
+		async updateColumn (column) {
+			await columnsService.updateColumns(column)
+			const index = this.columns.findIndex(({ id }) => id === column.id)
+			if (~index) {
+				this.columns.splice(index, 1, column)
+			}
+		},
+		async deleteColumn (id) {
+			await columnsService.deleteColumns(id)
+			this.columns = this.columns.filter(column => column.id !== id)
+		}
+	},
+})
+```
+
+# Шаг 2. Изменение хранилища пользователей
+
+Замените содержимое файла `src/stores/users.js`:
+
+```javascript
+import { defineStore } from "pinia";
+import { userService } from '@/services'
+
+export const useUsersStore = defineStore('users', {
+  state: () => ({
+    users: [],
+  }),
+  getters: {},
+  actions: {
+		async fetchUsers() {
+      this.users = await userService.fetchUsers()
+    },
+  },
+});
+```
+
+# Шаг 3. Отображение пользователей в компоненте TaskCard
+
+Добавим аватары пользователей с сервера в компонент `TaskCard.vue`. Подключим хранилище пользователей и создадим вычисляемое свойство для получения конкретного пользователя:
+
+```javascript
+import { getPublicImage } from '@/common/helpers'
+import { useUsersStore } from '@/stores'
+import { computed } from 'vue'
+
+const usersStore = useUsersStore()
+
+// ...
+
+const taskUser = computed(() => {
+  return usersStore.users.find(user => user.id === props.task.userId)
+})
+```
+
+В шаблоне обновим блок отображения пользователя:
+
+```html
+<div
+    v-if="taskUser"
+    class="task__user"
+>
+  <div class="task__avatar">
+    <img
+        :src="getPublicImage(taskUser.avatar)"
+        alt="Аватар пользователя"
+        width="20"
+        height="20"
+    />
+  </div>
+  {{ taskUser.name }}
+</div>
+```
+
+# Шаг 4. Изменение отображения селектора пользователей
+
+Теперь необходимо заменить моковые данные пользователей на серверные в компоненте `TaskCardCreatorUserSelector.vue`.
+
+В блоке `script` импортируем функцию `getPublicImage`, подключим хранилище пользователей и определим свойство `currentWorker`:
+
+```javascript
+import { ref, computed } from 'vue'
+import { getPublicImage } from '../../../common/helpers'
+import AppIcon from '@/common/components/AppIcon.vue'
+import { useUsersStore } from '@/stores'
+
+const usersStore = useUsersStore()
+
+// ...
+
+const currentWorker = computed(() => usersStore.users.find(({ id }) => id === props.modelValue))
+
+// ...
+```
+
+Обновим источник данных о пользователях и способ получения изображений в шаблоне:
+
+```html
+<template>
+  <li>
+    Участник:
+    <div class="task-card__participant">
+      <button
+          v-if="!modelValue"
+          type="button"
+          class="task-card__link"
+          @click.stop="isMenuOpened = !isMenuOpened"
+      >
+        добавить пользователя
+      </button>
+      <button
+          v-else
+          class="users-list__user"
+      >
+        <img
+            :src="getPublicImage(currentWorker.avatar)"
+            @click.stop="isMenuOpened = !isMenuOpened"
+        />
+        <span @click.stop="isMenuOpened = !isMenuOpened">
+          {{ currentWorker.name }}
+        </span>
+        <app-icon
+            class="icon--trash users-list__icon"
+            @click="$emit('update:modelValue', null)"
+        />
+      </button>
+      <div class="task-card__users">
+        <ul
+            v-if="isMenuOpened"
+            v-click-outside="hideUserMenu"
+            class="users-list"
+        >
+          <li
+              v-for="user in usersStore.users"
+              :key="user.id"
+          >
+            <button
+                class="users-list__user"
+                @click="setUser(user.id)"
+            >
+              <img :src="getPublicImage(user.avatar)" />
+              <span>{{ user.name }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </li>
+</template>
+```
+
+# Шаг 5. Изменение хранилища задач
+
+Замените содержимое файла `src/stores/tasks.js`:
+
+```javascript
+import { defineStore } from 'pinia'
+import { useUsersStore, useFiltersStore } from '@/stores'
+import { tasksService } from '@/services'
+
+export const useTasksStore = defineStore('tasks', {
+	state: () => ({
+		tasks: [],
+	}),
+	getters: {
+		filteredTasks: state => {
+			const filtersStore = useFiltersStore()
+
+			const filtersAreEmpty = Object.values(filtersStore.filters)
+				.every(value => !value.length)
+
+			if (filtersAreEmpty) {
+				// Вернуть все задачи, если фильтры не применены
+				return state.tasks
+			}
+
+			// Применить фильтр по поиску
+			const searchFilter = task => task.title
+				.toLowerCase()
+				.includes(filtersStore.filters.search.toLowerCase().trim())
+
+			// Применить фильтр по пользователям
+			const usersFilter = task => filtersStore.filters.users
+				.some(userId => userId === task.userId)
+
+			// Применить фильтр по статусам
+			const statusesFilter = task => filtersStore.filters.statuses
+				.some(el => el === task.status || el === task.timeStatus)
+
+			// Обработать задачи в соответствии с фильтрами
+			return state.tasks.filter(task => {
+				let result = {
+					search: searchFilter,
+					users: usersFilter,
+					statuses: statusesFilter
+				}
+				return Object.entries(result)
+					.every(([key, callback]) =>
+						!filtersStore.filters[key].length || callback(task))
+			})
+		},
+		getTaskUserById: () => id => {
+			const usersStore = useUsersStore()
+			return usersStore.users.find(user => user.id === id)
+		},
+		// Фильтруем задачи, которые относятся к бэклогу (columnId === null)
+		sidebarTasks: state => {
+			return state.filteredTasks
+				.filter(task => !task.columnId)
+				.sort((a, b) => a.sortOrder - b.sortOrder)
+		}
+	},
+	actions: {
+		async fetchTasks () {
+			// Получение данных из JSON-файла заменим в следующих разделах
+			this.tasks = await tasksService.fetchTasks()
+		},
+		updateTasks (tasksToUpdate) {
+			tasksToUpdate.forEach(async task => {
+				const index = this.tasks.findIndex(({ id }) => id === task.id)
+				// findIndex вернёт элемент массива или -1
+				// Используем bitwise not для определения, если index === -1
+				// ~-1 вернёт 0, а значит false
+				if (~index) {
+					// Обновить порядок сортировки на сервере
+					await tasksService.updateTask(task)
+					this.tasks.splice(index, 1, task)
+				}
+			})
+		},
+		async addTask (task) {
+			// Добавляем задачу в конец списка задач в бэклоге
+			task.sortOrder = this.tasks.filter(task => !task.columnId).length
+			const newTask = await tasksService.createTask(task)
+			// Добавляем задачу в массив
+			this.tasks = [...this.tasks, newTask]
+			return newTask
+		},
+		async editTask (task) {
+			const newTask = await tasksService.updateTask(task)
+			const index = this.tasks.findIndex(({ id }) => newTask.id === id)
+			if (~index) {
+				if (newTask.userId) {
+					newTask.user = { ...this.getTaskUserById(newTask.userId) }
+				}
+				this.tasks.splice(index, 1, newTask)
+			}
+			return newTask
+		},
+		async deleteTask (id) {
+			await tasksService.deleteTask(id)
+			this.tasks = this.tasks.filter(task => task.id !== id)
+		}
+	},
+})
+```
+
+# Шаг 6. Получение изображений с сервера
+
+Аватары пользователей сейчас не отображаются, поскольку они теперь хранятся на сервере. Исправим это, заменив прежний метод `getImage` на `getPublicImage` в файле `src/views/HomeView.vue`:
+
+```html
+  <img
+      :src="getPublicImage(user.avatar)"
+      alt="Аватар юзера"
+      width="24"
+      height="24"
+  />
+```
+
+```javascript
+import { getPublicImage } from '../common/helpers'
+```
+
+# Шаг 7. Изменение бэклога
+
+Для неавторизованных пользователей бэклог следует скрывать.
+
+Добавим проверку авторизации в файл `AppLayoutMain.vue`:
+
+```html
+<template>
+  <div class="app_layout">
+    <app-layout-header/>
+    <div class="content">
+      <app-layout-sidebar v-if="authStore.isAuthenticated" />
+      <slot/>
+    </div>
+  </div>
+</template>
+
+<script setup>
+// ...
+import { useAuthStore } from '@/stores'
+
+const authStore = useAuthStore()
+</script>
+```
+
+Также добавим аватар авторизованного пользователя в файле `AppLayoutSidebar.vue`:
+
+```html
+<template>
+<!--    ...-->
+    <div class="backlog__account">
+      <img
+          :src="userImage"
+          alt="Ваш аватар"
+          width="32"
+          height="32"
+      />
+      {{ authStore.user.name }}
+    </div>
+<!--    ...-->
+</template>
+
+<script setup>
+// ...
+import { getTargetColumnTasks, addActive, getPublicImage } from '@/common/helpers'
+import { useTasksStore, useAuthStore } from '@/stores'
+
+const tasksStore = useTasksStore()
+const authStore = useAuthStore()
+
+const state = reactive({ backlogIsHidden: false })
+
+const userImage = getPublicImage(authStore.user.avatar)
+
+// ...
+</script>
+```

@@ -1,0 +1,780 @@
+---
+title: "Критерии"
+type: article
+---
+
+# Критерии
+
+## Базовые критерии
+
+### Б1. Имена компонентов состоят из нескольких слов
+
+Пользовательские компоненты всегда должны иметь имена, состоящие из нескольких слов, за исключением корневых компонентов приложения (App). Такой подход позволяет избежать конфликтов с существующими и будущими HTML-элементами, имеющими однословные имена.
+
+**Плохо:**
+
+```javascript
+<!-- В скомпилированных шаблонах -->
+<Item />
+
+<!-- В DOM-шаблонах-->
+<item></item>
+```
+
+**Хорошо:**
+
+```xml
+<!-- В скомпилированных шаблонах -->
+<TodoItem />
+
+<!-- В DOM-шаблонах-->
+<todo-item></todo-item>
+```
+
+### Б2. Используйте подробные определения передаваемых свойств
+
+Описания пропсов должны быть максимально детальными, с обязательным указанием типов.
+
+**Плохо:**
+
+```javascript
+const props = defineProps(['status'])
+```
+
+**Хорошо:**
+
+```arduino
+const props = defineProps({
+  status: String
+})
+```
+
+**Отлично:**
+
+```php
+const props = defineProps({
+  status: {
+    type: String,
+    required: true,
+
+    validator: (value) => {
+      return ['syncing', 'synced', 'version-conflict', 'error'].includes(
+        value
+      )
+    }
+  }
+})
+```
+
+### Б3. Используйте ключи при работе с `v-for`
+
+Атрибут `key` при использовании директивы `v-for` обязателен для компонентов, поскольку он помогает поддерживать внутреннее состояние компонента на всех уровнях поддерева. Рекомендуется применять его и для обычных элементов, чтобы обеспечить предсказуемое поведение, например, сохранить целостность объектов в анимациях.
+
+**Плохо:**
+
+```javascript
+<ul>
+  <li v-for="todo in todos">
+    {{ todo.text }}
+  </li>
+</ul>
+```
+
+**Хорошо:**
+
+```handlebars
+<ul>
+  <li
+    v-for="todo in todos"
+    :key="todo.id"
+  >
+    {{ todo.text }}
+  </li>
+</ul>
+```
+
+### Б4. Старайтесь не использовать `v-if` в одном блоке с `v-for`
+
+При обработке директив во Vue `v-if` имеет более высокий приоритет, чем `v-for`. Приведённый ниже код вызовет ошибку:
+
+```handlebars
+<ul>
+  <li
+    v-for="user in users"
+    v-if="user.isActive"
+    :key="user.id"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+Причина в том, что директива `v-if` вычисляется первой, а итерационная переменная `user` в этот момент ещё не определена.
+
+**Плохо:**
+
+```javascript
+<ul>
+  <li
+    v-for="user in users"
+    v-if="user.isActive"
+    :key="user.id"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+**Хорошо:**
+
+```handlebars
+<ul>
+  <li
+    v-for="user in activeUsers"
+    :key="user.id"
+  >
+    {{ user.name }}
+  </li>
+</ul>
+```
+
+**Хорошо:**
+
+```handlebars
+<ul>
+  <template v-for="user in users" :key="user.id">
+    <li v-if="user.isActive">
+      {{ user.name }}
+    </li>
+  </template>
+</ul>
+```
+
+### Б5. Используйте стили на уровне компонента
+
+В приложениях стили в корневом компоненте `App` и компонентах макета могут быть глобальными, однако все остальные компоненты должны иметь ограниченную область видимости. Это правило относится только к SFC (Single File Component).
+
+**Плохо:**
+
+```javascript
+<template>
+  <button class="btn btn-close">×</button>
+</template>
+
+<style>
+.btn-close {
+  background-color: red;
+}
+</style>
+```
+
+**Хорошо:**
+
+```xml
+<template>
+  <button class="button button-close">×</button>
+</template>
+
+<!-- С использованием атрибута `scoped` -->
+<style scoped>
+.button {
+  border: none;
+  border-radius: 2px;
+}
+
+.button-close {
+  background-color: red;
+}
+</style>
+```
+
+**Хорошо:**
+
+```xml
+<template>
+  <button :class="[$style.button, $style.buttonClose]">×</button>
+</template>
+
+<!-- С использованием CSS-модулей-->
+<style module>
+.button {
+  border: none;
+  border-radius: 2px;
+}
+
+.buttonClose {
+  background-color: red;
+}
+</style>
+```
+
+**Хорошо:**
+
+```xml
+<template>
+  <button class="c-Button c-Button--close">×</button>
+</template>
+
+<!-- С использованием BEM -->
+<style>
+.c-Button {
+  border: none;
+  border-radius: 2px;
+}
+
+.c-Button--close {
+  background-color: red;
+}
+</style>
+```
+
+### Б6. Не используйте мультикомпонентные файлы
+
+Каждый компонент при создании должен располагаться в отдельном файле. Это упрощает поиск нужного компонента для просмотра или редактирования.
+
+**Плохо:**
+
+MyComponents.vue
+
+```javascript
+app.component('TodoList', {
+  // ...
+})
+
+app.component('TodoItem', {
+  // ...
+})
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- TodoList.vue
+|- TodoItem.vue
+```
+
+### Б7. Пишите название компонентов с использованием PascalCase или kebab-case
+
+Для единообразия при обращении к компонентам в JS(X) и шаблонах лучше всего подходит PascalCase, который хорошо работает с автодополнением в редакторах. Однако файлы со смешанным регистром иногда вызывают проблемы на регистронезависимых файловых системах, поэтому допустимо использовать и kebab-case.
+
+**Плохо:**
+
+```javascript
+components/
+|- mycomponent.vue
+
+components/
+|- myComponent.vue
+})
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- MyComponent.vue
+
+components/
+|- my-component.vue
+```
+
+### Б8. Именование базовых компонентов
+
+Базовые компоненты отвечают за единообразный стиль (дизайн) и определённое поведение приложения. Они могут включать только:
+
+*   HTML-элементы,
+*   другие базовые компоненты,
+*   UI-компоненты сторонних библиотек.
+
+Базовые компоненты никогда не содержат глобальное состояние, например, хранилище Pinia.
+
+Некоторые особенности и преимущества:
+
+*   При алфавитной сортировке в редакторе все базовые компоненты приложения оказываются рядом, что упрощает их поиск и идентификацию.
+*   Поскольку имена компонентов должны состоять из нескольких слов, вам не приходится придумывать произвольный префикс для простых обёрток (например, MyButton, VueButton).
+*   Часто используемые компоненты можно зарегистрировать глобально, а не импортировать повсюду. Префикс позволяет реализовать это с помощью webpack:
+
+```javascript
+const requireComponent = require.context(
+  './src',
+  true,
+  /Base[A-Z]\w+\.(vue|js)$/
+)
+requireComponent.keys().forEach(function (fileName) {
+  let baseComponentConfig = requireComponent(fileName)
+  baseComponentConfig =
+    baseComponentConfig.default || baseComponentConfig
+  const baseComponentName =
+    baseComponentConfig.name ||
+    fileName.replace(/^.+\//, '').replace(/\.\w+$/, '')
+  app.component(baseComponentName, baseComponentConfig)
+})
+```
+
+**Плохо:**
+
+```javascript
+components/
+|- MyButton.vue
+|- VueTable.vue
+|- Icon.vue
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- BaseButton.vue
+|- BaseTable.vue
+|- BaseIcon.vue
+
+components/
+|- AppButton.vue
+|- AppTable.vue
+|- AppIcon.vue
+
+components/
+|- VButton.vue
+|- VTable.vue
+|- VIcon.vue
+```
+
+### Б9. Имена компонентов, используемых только один раз
+
+Компоненты с единственным активным экземпляром должны начинаться с префикса `The`, что указывает на их одноразовое использование на странице (а не только во всём приложении).
+
+Такие компоненты не должны принимать пропсов. Если вам потребовалось передавать пропсы, это сигнализирует о том, что перед вами переиспользуемый компонент, который пока применяется лишь в одном месте.
+
+**Плохо:**
+
+```javascript
+components/
+|- Heading.vue
+|- MySidebar.vue
+})
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- TheHeading.vue
+|- TheSidebar.vue
+```
+
+### Б10. Имена дочерних компонентов, тесно связанных с родительским компонентом
+
+Дочерние компоненты, тесно связанные с родительскими, должны содержать имя родительского компонента в качестве префикса. Когда компонент имеет смысл только в контексте конкретного родительского компонента, эта связь должна быть отражена в его имени. Поскольку редакторы упорядочивают файлы по алфавиту, такой подход группирует связанные файлы рядом.
+
+**Плохо:**
+
+```javascript
+components/
+|- TodoList.vue
+|- TodoItem.vue
+|- TodoButton.vue
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- TodoList.vue
+|- TodoListItem.vue
+|- TodoListItemButton.vue
+```
+
+### Б11. Порядок слов в названиях компонентов
+
+Имена компонентов должны начинаться с наиболее общих слов и завершаться описательными модификаторами.
+
+**Плохо:**
+
+```javascript
+components/
+|- ClearSearchButton.vue
+|- ExcludeFromSearchInput.vue
+|- LaunchOnStartupCheckbox.vue
+|- RunSearchButton.vue
+|- SearchInput.vue
+|- TermsCheckbox.vue
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- SearchButtonClear.vue
+|- SearchButtonRun.vue
+|- SearchInputQuery.vue
+|- SearchInputExcludeGlob.vue
+|- SettingsCheckboxTerms.vue
+|- SettingsCheckboxLaunchOnStartup.vue
+```
+
+### Б12. Самозакрывающиеся компоненты
+
+Компоненты без содержимого должны быть самозакрывающимися в SFC, строковых шаблонах и JSX, но не в DOM-шаблонах. Самозакрывающийся тег наглядно показывает, что компонент не только пуст, но и не предполагает наличия содержимого. Код при этом становится чище за счёт отсутствия избыточного закрывающего тега.
+
+**Плохо:**
+
+```javascript
+<!-- В SFC, строковых шаблонах и JSX -->
+<MyComponent></MyComponent>
+
+<!-- В DOM-шаблонах -->
+<my-component/>
+```
+
+**Хорошо:**
+
+```xml
+<!-- В SFC, строковых шаблонах и JSX -->
+<MyComponent/>
+
+<!-- В DOM-шаблонах -->
+<my-component></my-component>
+```
+
+### Б13. Полные имена компонентов
+
+Желательно, чтобы имена компонентов содержали полные слова, а не сокращения. Автодополнение в редакторах позволяет набирать длинные имена с минимальными усилиями, а ясность названия приносит большую пользу. Особенно стоит избегать нестандартных сокращений. Соблюдая это правило, вы значительно облегчите чтение и понимание собственного кода.
+
+**Плохо:**
+
+```javascript
+components/
+|- SdSettings.vue
+|- UProfOpts.vue
+```
+
+**Хорошо:**
+
+```1c
+components/
+|- StudentDashboardSettings.vue
+|- UserProfileOptions.vue
+```
+
+### Б14. Именование передаваемых свойств компонентов
+
+В DOM-шаблонах пропсы следует использовать в стиле kebab-case. В SFC и JSX допускается как kebab-case, так и camelCase. Важно придерживаться единого стиля. Если вы выбрали camelCase, убедитесь, что в приложении нигде не используется kebab-case для именования пропсов.
+
+**Хорошо:**
+
+```xml
+<!-- В SFC, строковых шаблонах и JSX -->
+<WelcomeMessage greeting-text="hi"/>
+<!-- Или -->
+<WelcomeMessage greetingText="hi"/>
+
+<!-- В DOM-шаблонах -->
+<welcome-message greeting-text="hi"></welcome-message>
+```
+
+### Б15. Элементы с несколькими атрибутами
+
+Элементы с несколькими атрибутами следует записывать в несколько строк, по одному атрибуту на строку. В JavaScript принято разбивать объекты с множеством свойств на несколько строк для лучшей читаемости. Аналогичный подход следует применять к шаблонам и JSX.
+
+**Плохо:**
+
+```javascript
+<MyComponent foo="a" bar="b" baz="c"/>
+```
+
+**Хорошо:**
+
+```abnf
+<MyComponent
+  foo="a"
+  bar="b"
+  baz="c"
+/>
+```
+
+### Б16. Простые выражения в шаблонах
+
+Шаблоны компонентов должны содержать только простые выражения; более сложную логику следует выносить в вычисляемые свойства или методы. Сложные выражения в шаблонах снижают их декларативность. Стремитесь описывать, что именно отображается, а не как вычисляется значение. Вычисляемые свойства и методы к тому же дают возможность повторного использования кода.
+
+**Плохо:**
+
+```javascript
+{{
+  fullName.split(' ').map((word) => {
+    return word[0].toUpperCase() + word.slice(1)
+  }).join(' ')
+}}
+```
+
+**Хорошо:**
+
+```stylus
+{{ normalizedFullName }}
+
+// В скрипте
+const normalizedFullName = computed(() =>
+  fullName.value
+    .split(' ')
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(' ')
+)
+```
+
+### Б17. Простые вычисляемые свойства
+
+Сложные вычисляемые свойства рекомендуется разбивать на более мелкие и простые.
+
+Преимущества простых и хорошо именованных вычисляемых свойств:
+
+**Легче тестировать.** Когда каждое вычисляемое свойство содержит минимальное выражение с небольшим числом зависимостей, написать тесты, подтверждающие его корректную работу, значительно проще.
+
+**Легче читать.** Декомпозиция вычисляемых свойств побуждает давать каждому значению описательное имя, даже если оно не используется повторно. Это облегчает другим разработчикам понимание кода.
+
+**Более адаптивны к изменяющимся требованиям.** Маленькие и сфокусированные вычисляемые свойства позволяют лучше понять, как используется информация. К тому же небольшие фрагменты можно переиспользовать в других местах, что обеспечивает большую гибкость.
+
+**Плохо:**
+
+```javascript
+const price = computed(() => {
+  const basePrice = manufactureCost.value / (1 - profitMargin.value)
+  return basePrice - basePrice * (discountPercent.value || 0)
+})
+```
+
+**Хорошо:**
+
+```coffeescript
+const basePrice = computed(
+  () => manufactureCost.value / (1 - profitMargin.value)
+)
+
+const discount = computed(
+  () => basePrice.value * (discountPercent.value || 0)
+)
+
+const finalPrice = computed(() => basePrice.value - discount.value)
+```
+
+### Б18. Значения атрибутов в кавычках
+
+Непустые значения HTML-атрибутов следует заключать в одинарные или двойные кавычки. Хотя значения без пробелов формально можно не оборачивать в кавычки, такой подход помогает избежать проблем с пробелами и делает код более читаемым.
+
+**Плохо:**
+
+```javascript
+<AppSidebar :style={width:sidebarWidth+'px'}>
+```
+
+**Хорошо:**
+
+```dust
+<AppSidebar :style="{ width: sidebarWidth + 'px' }">
+```
+
+### Б19. Сокращения директив
+
+Сокращения директив (`:` для `v-bind:`, `@` для `v-on:` и `#` для `v-slot`) рекомендуется использовать единообразно: либо применять везде, либо не применять нигде.
+
+**Плохо:**
+
+```routeros
+<input
+  v-bind:value="newTodoText"
+  :placeholder="newTodoInstructions"
+>
+```
+
+```hsp
+<input
+  v-on:input="onInput"
+  @focus="onFocus"
+>
+```
+
+```xml
+<template v-slot:header>
+  <h1>Here might be a page title</h1>
+</template>
+
+<template #footer>
+  <p>Here's some contact info</p>
+</template>
+```
+
+**Хорошо:**
+
+```elixir
+<input
+  :value="newTodoText"
+  :placeholder="newTodoInstructions"
+>
+```
+
+```verilog
+<input
+  v-bind:value="newTodoText"
+  v-bind:placeholder="newTodoInstructions"
+>
+```
+
+```python
+<input
+  @input="onInput"
+  @focus="onFocus"
+>
+```
+
+```hsp
+<input
+  v-on:input="onInput"
+  v-on:focus="onFocus"
+>
+```
+
+```xml
+<template v-slot:header>
+  <h1>Here might be a page title</h1>
+</template>
+
+<template v-slot:footer>
+  <p>Here's some contact info</p>
+</template>
+```
+
+```xml
+<template #header>
+  <h1>Here might be a page title</h1>
+</template>
+
+<template #footer>
+  <p>Here's some contact info</p>
+</template>
+```
+
+## Дополнительные критерии
+
+### Д1. Порядок атрибутов элемента
+
+Атрибуты элементов необходимо упорядочивать.
+
+Рекомендуемый порядок:
+
+*   определение: `is`;
+*   отрисовка списка: `v-for`;
+*   условия: `v-if`, `v-else-if`, `v-else`, `v-show`, `v-cloak`;
+*   модификаторы отрисовки: `v-pre`, `v-once`;
+*   глобальные свойства: `id`;
+*   уникальные атрибуты: `ref`, `key`;
+*   двустороннее связывание: `v-model`;
+*   другие атрибуты;
+*   события: `v-on`;
+*   содержимое: `v-html`, `v-text`.
+
+### Д2. Пустые строки в параметрах компонента
+
+Допускается добавлять одну пустую строку между многострочными свойствами, особенно когда опции не помещаются на экране без прокрутки. Когда компоненты становятся перегруженными или трудночитаемыми, пробелы между многострочными свойствами облегчают восприятие. В некоторых редакторах, таких как Vim, подобное форматирование также упрощает навигацию с помощью клавиатуры.
+
+**Хорошо:**
+
+```dts
+props: {
+  value: {
+    type: String,
+    required: true
+  },
+
+  focused: {
+    type: Boolean,
+    default: false
+  },
+
+  label: String,
+  icon: String
+},
+
+computed: {
+  formattedValue() {
+    // ...
+  },
+
+  inputClasses() {
+    // ...
+  }
+}
+```
+
+```dts
+// Можно не добавлять пустые строки, если компонент легко читается
+props: {
+  value: {
+    type: String,
+    required: true
+  },
+  focused: {
+    type: Boolean,
+    default: false
+  },
+  label: String,
+  icon: String
+},
+computed: {
+  formattedValue() {
+    // ...
+  },
+  inputClasses() {
+    // ...
+  }
+}
+```
+
+### Д3. Порядок элементов верхнего уровня компонента в SFC
+
+В однофайловых компонентах теги `<script>`, `<template>` и `<style>` должны следовать в согласованном порядке. При этом тег `<style>` всегда размещается последним, поскольку хотя бы один из двух других всегда обязателен.
+
+**Плохо:**
+
+```xml
+<!-- ComponentA.vue -->
+<style>/* ... */</style>
+<script>/* ... */</script>
+<template>...</template>
+```
+
+```xml
+<!-- ComponentA.vue -->
+<script>/* ... */</script>
+<template>...</template>
+<style>/* ... */</style>
+
+<!-- ComponentB.vue -->
+<template>...</template>
+<script>/* ... */</script>
+<style>/* ... */</style>
+```
+
+**Хорошо:**
+
+```xml
+<!-- ComponentA.vue -->
+<script>/* ... */</script>
+<template>...</template>
+<style>/* ... */</style>
+
+<!-- ComponentB.vue -->
+<script>/* ... */</script>
+<template>...</template>
+<style>/* ... */</style>
+```
+
+```xml
+<!-- ComponentA.vue -->
+<template>...</template>
+<script>/* ... */</script>
+<style>/* ... */</style>
+
+<!-- ComponentB.vue -->
+<template>...</template>
+<script>/* ... */</script>
+<style>/* ... */</style>
+```

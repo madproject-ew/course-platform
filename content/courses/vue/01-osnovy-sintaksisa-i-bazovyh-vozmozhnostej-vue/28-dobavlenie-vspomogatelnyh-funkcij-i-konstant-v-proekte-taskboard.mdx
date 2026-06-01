@@ -1,0 +1,136 @@
+---
+title: "Добавление вспомогательных функций и констант в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление констант
+
+В процессе работы над проектом потребуются вспомогательные функции и константы. Для их хранения создайте директорию `common` в `src`.
+
+Добавьте файл `constants.js` в директорию `common`. Определим в нём следующие константы:
+
+```javascript
+export const STATUSES = [
+  {
+    label: 'Важно, не срочно',
+    value: 'green'
+  },
+  {
+    label: 'Срочно, не важно',
+    value: 'orange'
+  },
+  {
+    label: 'Срочно, важно',
+    value: 'red'
+  },
+  {
+    label: 'Дедлайн',
+    value: 'time'
+  },
+  {
+    label: 'Просрочено',
+    value: 'alert'
+  }
+];
+
+export const SEC = 1000;
+export const MINUTE_IN_SEC = 60;
+export const HOUR_IN_SEC = MINUTE_IN_SEC * 60;
+export const DAY_IN_SEC = HOUR_IN_SEC * 24;
+export const MONTH_IN_SEC = DAY_IN_SEC * 30;
+export const YEAR_IN_SEC = DAY_IN_SEC * 365;
+export const DAY_IN_MILLISEC = DAY_IN_SEC * SEC;
+
+export const TAG_SEPARATOR = '#';
+```
+
+# Шаг 2. Добавление перечисляемых типов — enums
+
+В JavaScript нет встроенного типа enum. Тем не менее для повышения читаемости кода мы создадим объекты, преобразующие одни значения в другие.
+
+К примеру, с сервера поступает свойство `{ status: 1 }`. Само по себе число мало о чём говорит. Чтобы упростить понимание, можно определить вспомогательный объект для преобразования таких данных в понятный формат.
+
+```javascript
+const statuses = {
+	1: 'Важно'
+}
+```
+
+После обработки статуса через этот объект мы получим `{ status: 'Важно' }`.
+
+Создайте директорию `enums` в `src/common` и добавьте два файла: `taskStatuses.js` и `timeStatuses.js`.
+
+Добавьте следующий код в `taskStatuses.js`:
+
+```javascript
+export default {
+  1: 'green',
+  2: 'orange',
+  3: 'red'
+};
+```
+
+В файл `timeStatuses.js` добавьте:
+
+```javascript
+export default {
+  DEADLINE: 'time',
+  EXPIRED: 'alert'
+};
+```
+
+# Шаг 3. Добавление вспомогательных функций
+
+На этом шаге мы реализуем несколько вспомогательных функций.
+
+Создайте файл `helpers.js` в директории `src/common` и добавьте в него импорты:
+
+```javascript
+import {
+  DAY_IN_MILLISEC,
+  TAG_SEPARATOR
+} from './constants';
+import timeStatuses from './enums/timeStatuses';
+import taskStatuses from './enums/taskStatuses';
+```
+
+Напишем функцию, которая принимает строку с метками и разбивает её на массив по заданному разделителю:
+
+```javascript
+export const getTagsArrayFromString = tags => {
+  const array = tags.split(TAG_SEPARATOR);
+  return array.slice(1, array.length);
+};
+```
+
+Следующая функция принимает срок выполнения задачи (дедлайн), сравнивает его с текущим временем и возвращает временной статус задачи.
+
+```javascript
+export const getTimeStatus = dueDate => {
+  if (!dueDate) {
+    return '';
+  }
+  const currentTime = +new Date();
+  const taskTime = Date.parse(dueDate);
+  const timeDelta = taskTime - currentTime;
+  if (timeDelta > DAY_IN_MILLISEC) {
+    return '';
+  }
+  return timeDelta < 0 ? timeStatuses.EXPIRED : timeStatuses.DEADLINE;
+};
+```
+
+Также нам понадобится функция нормализации задач, поступающих с сервера. Нормализация — это преобразование структуры данных из одного формата в другой.
+
+Функция нормализации задач:
+
+```javascript
+export const normalizeTask = task => {
+  return {
+    ...task,
+    status: task.statusId ? taskStatuses[task.statusId] : '',
+    timeStatus: getTimeStatus(task.dueDate)
+  };
+};
+```
+

@@ -1,0 +1,201 @@
+---
+title: "Использование v-model между компонентами"
+type: article
+quiz:
+  - question: "Чему эквивалентна запись <custom-component v-model=\"value\" />?"
+    type: single
+    options:
+      - "<custom-component :value=\"value\" @input=\"value = $event\" />"
+      - "<custom-component :modelValue=\"value\" @update:model-value=\"value = $event\" />"
+      - "<custom-component :data=\"value\" @change=\"value = $event\" />"
+      - "<custom-component v-bind=\"value\" v-on=\"value\" />"
+    answer: 1
+  - question: "Что необходимо сделать в дочернем компоненте для поддержки v-model?"
+    type: multiple
+    options:
+      - "Объявить prop с именем modelValue"
+      - "Создать emit с именем update:modelValue"
+      - "Использовать директиву v-model внутри компонента"
+      - "Объявить prop с именем value"
+      - "Привязать modelValue к элементу ввода"
+    answers: [0, 1, 4]
+  - question: "Как реализовать двустороннее связывание через computed в дочернем компоненте?"
+    type: single
+    options:
+      - "Создать computed с функцией, возвращающей modelValue"
+      - "Создать computed с объектом, содержащим методы get и set"
+      - "Использовать watch вместо computed"
+      - "Передать computed-свойство как prop"
+    answer: 1
+---
+
+# Использование v-model между компонентами
+
+Ранее мы упоминали, что Vue предоставляет удобную конструкцию для обмена данными и событиями между компонентами.
+
+В предыдущих примерах мы реализовывали одностороннее связывание через связку `props` и `emit`. Схема потока данных выглядела так:
+
+![Поток данных](./images/5920ba59555b.png)
+
+Компоненты при таком подходе выглядели следующим образом:
+
+```xml
+<!-- Дочерний компонент -->
+<template>
+ <div>
+   <input
+     :value="name"
+     @input="emit('setName', $event.target.value)"
+   />
+ </div>
+</template>
+
+<script setup>
+  defineProps({
+    name: {
+      type: String,
+      required: true
+    }
+  })
+
+  const emit = defineEmits(["setName"])
+</script>
+```
+
+```xml
+<!-- Родительский компонент -->
+<template>
+ <div id="app">
+   <Child
+     :name="name"
+     @setName="setName"
+   />
+ </div>
+</template>
+
+<script setup>
+  import { ref } from "vue"
+  import Child from "./Child";
+
+  const name = ref("Василий Петров")
+
+  const setName = (value) => {
+    name.value = value
+  }
+</script>
+```
+
+Подход работает, однако его можно упростить с помощью директивы `v-model`:
+
+![Упрощённая схема потока данных](./images/a04dda1e041d.png)
+
+При таком подходе изменение в дочернем компоненте мгновенно обновляет данные в родительском — в нашем случае речь идёт о вводе текста. И наоборот: если данные меняются в родителе, обновления отразятся в потомке.
+
+Чтобы понять, как реализовать такое поведение, нужно разобраться в механике `v-model`. Директива обеспечивает двустороннее связывание данных, но под капотом это всё та же односторонняя передача, обёрнутая в дополнительный слой абстракции.
+
+Для HTML-элементов `<input>` запись:
+
+```xml
+<input v-model="value" />
+```
+
+...эквивалентна следующей:
+
+```xml
+<input
+  :value="value"
+  @input="value = $event.target.value"
+/>
+```
+
+Для пользовательских компонентов запись:
+
+```xml
+<custom-component v-model="value" />
+```
+
+...равнозначна:
+
+```xml
+<custom-component
+  :modelValue="value"
+  @update:model-value="value = $event"
+/>
+```
+
+Чтобы это заработало на практике, необходимо:
+
+1.  Указать в `props` дочернего компонента свойство `modelValue` и привязать его к атрибуту `value` поля ввода.
+2.  При событии `input` вызвать `emit("update:modelValue", значение)`.
+
+```xml
+<!-- Дочерний компонент -->
+<template>
+ <div>
+   <input
+     :value="modelValue"
+     @input="emit('update:modelValue', $event.target.value)"
+   />
+ </div>
+</template>
+
+<script setup>
+  defineProps({
+    modelValue: {
+      type: String,
+      required: true,
+    }
+  })
+
+  const emit = defineEmits(["update:modelValue"])
+</script>
+```
+
+```xml
+<!-- Родительский компонент -->
+<template>
+ <div id="app">
+   <Child v-model="name" />
+ </div>
+</template>
+
+<script setup>
+  import { ref } from "vue"
+  import Child from "./Child";
+
+  const name = ref("Василий Петров")
+</script>
+```
+
+Существует ещё один способ реализовать двустороннее связывание — через `computed` с методами `get` и `set`. Метод `get` возвращает значение `modelValue`, а `set` отправляет соответствующее событие. При этом на самом элементе `<input>` также можно использовать `v-model`:
+
+```xml
+<!-- Дочерний компонент -->
+<template>
+ <div>
+   <input v-model="value" />
+ </div>
+</template>
+
+<script setup>
+  import { computed } from "vue"
+
+  const props = defineProps({
+    modelValue: {
+      type: String,
+      required: true,
+    }
+  })
+
+  const emit = defineEmits(["update:modelValue"])
+
+  const value = computed({
+    get() {
+      return props.modelValue
+    },
+    set(value) {
+      emit("update:modelValue", value)
+    }
+  })
+</script>
+```

@@ -1,0 +1,225 @@
+---
+title: "Добавление методов хранилища в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление методов в хранилище колонок
+
+Для изменения данных хранилища необходимо определить соответствующие методы. Например, понадобятся методы загрузки данных — сначала из мок-файлов, а впоследствии из базы данных.
+
+На данном этапе список колонок пуст. Для работы с ним создадим следующие методы:
+
+*   fetchColumns — загрузка колонок из источника данных (мок-файла или БД);
+*   addColumn — добавление новой колонки;
+*   updateColumn — обновление существующей колонки;
+*   deleteColumn — удаление колонки.
+
+Добавим эти методы в объект `actions`:
+
+```javascript
+import { defineStore } from 'pinia'
+import columns from '@/mocks/columns.json'
+import { uniqueId } from 'lodash'
+
+export const useColumnsStore = defineStore('columns', {
+	state: () => ({
+		columns: [],
+	}),
+	getters: {},
+	actions: {
+		async fetchColumns () {
+			// Получение данных из JSON-файла заменим в последующих разделах
+			this.columns = columns
+		},
+		addColumn () {
+			// При создании колонки мы добавляем дефолтную, которую можем изменить позже
+			this.columns.push({ id: uniqueId('column_'), title: 'Новый столбец' })
+		},
+		updateColumn (column) {
+			const index = this.columns.findIndex(({ id }) => id === column.id)
+			if (~index) {
+				this.columns.splice(index, 1, column)
+			}
+		},
+		deleteColumn (id) {
+			this.columns = this.columns.filter(column => column.id !== id)
+		}
+	},
+})
+```
+
+# Шаг 2. Добавление методов в хранилище фильтров
+
+Реализуем метод для применения фильтров:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useFiltersStore = defineStore('filters', {
+	state: () => ({
+		search: '',
+		users: [],
+		statuses: []
+	}),
+	getters: {
+		filters: state => {
+			const { search, users, statuses } = state
+			return {
+				search,
+				users,
+				statuses
+			}
+		}
+	},
+	actions: {
+		applyFilters ({ item, entity }) {
+			if (entity === 'search') {
+				this.search = item
+			} else {
+				const resultValues = [...this[entity]]
+				const itemIndex = resultValues.findIndex(el => el === item)
+				~itemIndex
+					? resultValues.splice(itemIndex, 1)
+					: resultValues.push(item)
+				this.$patch({ [entity]: resultValues })
+			}
+		}
+	},
+})
+```
+
+# Шаг 3. Добавление методов в хранилище пользователей
+
+Реализуем метод загрузки списка пользователей:
+
+```javascript
+import { defineStore } from "pinia";
+import users from '../mocks/users.json'
+
+export const useUsersStore = defineStore('users', {
+  state: () => ({
+    users: [],
+  }),
+  getters: {},
+  actions: {
+		async fetchUsers() {
+      // Получение данных из JSON-файла заменим в последующих разделах
+	    this.users = users;
+    },
+  },
+});
+```
+
+# Шаг 4. Добавление метода в хранилище задач
+
+Добавим методы для полноценной работы с задачами: загрузку всех задач и CRUD-операции.
+
+> CRUD (Create Read Update Delete) — создание, чтение, обновление и удаление.
+
+```javascript
+import { defineStore } from "pinia"
+import tasks from "../mocks/tasks.json"
+import { normalizeTask } from "../common/helpers"
+import { useFiltersStore } from "./filters"
+import { useUsersStore } from "./users"
+
+export const useTasksStore = defineStore("tasks", {
+	state: () => ({
+		tasks: [],
+	}),
+	getters: {
+		filteredTasks: state => {
+			const filtersStore = useFiltersStore()
+
+			const filtersAreEmpty = Object.values(filtersStore.filters)
+				.every(value => !value.length)
+
+			if (filtersAreEmpty) {
+				// Вернуть все задачи, если фильтры не применены
+				return state.tasks
+			}
+
+			// Применить фильтр по поиску
+			const searchFilter = task => task.title
+				.toLowerCase()
+				.includes(filtersStore.filters.search.toLowerCase().trim())
+
+			// Применить фильтр по пользователям
+			const usersFilter = task => filtersStore.filters.users
+				.some(userId => userId === task.userId)
+
+			// Применить фильтр по статусам
+			const statusesFilter = task => filtersStore.filters.statuses
+				.some(el => el === task.status || el === task.timeStatus)
+
+			// Обработать задачи в соответствии с фильтрами
+			return state.tasks.filter(task => {
+				let result = {
+					search: searchFilter,
+					users: usersFilter,
+					statuses: statusesFilter
+				}
+				return Object.entries(result)
+					.every(([key, callback]) =>
+						!filtersStore.filters[key].length || callback(task))
+			})
+		},
+		getTaskUserById: () => id => {
+			const usersStore = useUsersStore()
+			return usersStore.users.find(user => user.id === id)
+		},
+		// Фильтруем задачи, которые относятся к бэклогу (columnId === null)
+		sidebarTasks: state => {
+			return state.filteredTasks
+				.filter(task => !task.columnId)
+				.sort((a, b) => a.sortOrder - b.sortOrder)
+		}
+	},
+	actions: {
+		async fetchTasks () {
+			// Получение данных из JSON-файла будет заменено в последующих разделах
+			this.tasks = tasks.map(task => normalizeTask(task))
+		},
+		updateTasks (tasksToUpdate) {
+			tasksToUpdate.forEach(task => {
+				const index = this.tasks.findIndex(({ id }) => id === task.id)
+				// findIndex вернёт элемент массива или -1
+				// Используем bitwise not для определения, если index === -1
+				// ~-1 вернёт 0, а значит false
+				if (~index) {
+					this.tasks.splice(index, 1, task)
+				}
+			})
+		},
+		addTask (task) {
+			// Нормализуем задачу
+			const newTask = normalizeTask(task)
+			// Добавляем идентификатор, последний элемент в списке задач
+			// После подключения сервера идентификатор будет присваиваться сервером
+			newTask.id = this.tasks.length + 1
+			// Добавляем задачу в конец списка задач в бэклоге
+			newTask.sortOrder = this.tasks.filter(task => !task.columnId).length
+			// Если задаче присвоен исполнитель, то добавляем объект пользователя в задачу
+			// Это будет добавлено сервером позже
+			if (newTask.userId) {
+				newTask.user = { ...this.getTaskUserById(newTask.userId) }
+			}
+			// Добавляем задачу в массив
+			this.tasks = [...this.tasks, newTask]
+		},
+		editTask (task) {
+			const index = this.tasks.findIndex(({ id }) => task.id === id)
+			if (~index) {
+				const newTask = normalizeTask(task)
+				if (newTask.userId) {
+					newTask.user = { ...this.getTaskUserById(newTask.userId) }
+				}
+				this.tasks.splice(index, 1, newTask)
+			}
+		},
+		deleteTask (id) {
+			this.tasks = this.tasks.filter(task => task.id !== id)
+		}
+	},
+})
+```

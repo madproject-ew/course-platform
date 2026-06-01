@@ -1,0 +1,113 @@
+---
+title: "Плагины и глобальные компоненты"
+type: article
+quiz:
+  - question: "Какой метод используется для добавления глобального свойства, доступного во всех компонентах приложения Vue?"
+    type: single
+    options:
+      - "app.provide()"
+      - "app.config.globalProperties"
+      - "app.mixin()"
+      - "app.inject()"
+    answer: 1
+  - question: "Чем глобальная регистрация компонента отличается от локальной?"
+    type: single
+    options:
+      - "Глобально зарегистрированный компонент работает быстрее"
+      - "Локально зарегистрированный компонент нельзя использовать в шаблонах"
+      - "Глобально зарегистрированный компонент доступен в любом месте приложения без дополнительного импорта"
+      - "Глобальная регистрация требует указания входных параметров"
+    answer: 2
+  - question: "Какой метод объекта плагина вызывается Vue при подключении плагина через app.use()?"
+    type: single
+    options:
+      - "init"
+      - "setup"
+      - "install"
+      - "mount"
+    answer: 2
+---
+
+# Плагины и глобальные компоненты
+
+Плагин --- это самодостаточный модуль, расширяющий возможности Vue.js. Область применения плагинов не ограничена: они могут добавлять глобальные методы и свойства, регистрировать директивы и многое другое.
+
+## Создание плагина
+
+Рассмотрим написание плагина для «капитализации» строки --- приведения первой буквы к верхнему регистру:
+
+```javascript
+/* plugins/capitalize.js */
+
+export default {
+  install (app, options) {
+    const capitalize = (string) => {
+      return string.charAt(0).toUpperCase() + string.slice(1)
+    }
+
+    /* Добавляем метод глобально во всё приложение */
+    app.config.globalProperties.$capitalize = capitalize
+  }
+}
+```
+
+Подключим плагин в конфигурации приложения:
+
+```javascript
+import { createApp } from 'vue'
+import App from 'App.vue'
+import capitalizePlugin from 'plugins/capitalize.js'
+
+const app = createApp(App)
+
+app.use(capitalizePlugin)
+```
+
+После этого плагин становится доступен в любом компоненте:
+
+```xml
+<template>
+  <div>
+    <p>{{ $capitalize(message) }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const message = ref('hello')
+```
+
+## Глобальные компоненты
+
+Ранее мы рассматривали локальное подключение компонентов:
+
+```xml
+<template>
+  <my-component />
+</template>
+
+<script setup>
+import MyComponent from 'MyComponent.vue'
+</script>
+```
+
+Однако компоненты можно зарегистрировать глобально, чтобы использовать их без повторного импорта:
+
+```javascript
+import { createApp } from 'vue'
+import App from 'App.vue'
+import MyComponent from 'MyComponent.vue'
+
+const app = createApp(App)
+
+app.component('MyComponent', MyComponent)
+```
+
+После глобальной регистрации компонент `MyComponent` доступен в любом месте приложения без дополнительного импорта:
+
+```xml
+<template>
+  <my-component />
+</template>
+```

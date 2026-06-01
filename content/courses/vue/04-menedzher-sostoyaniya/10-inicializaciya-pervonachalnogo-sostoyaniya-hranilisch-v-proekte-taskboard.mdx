@@ -1,0 +1,75 @@
+---
+title: "Инициализация первоначального состояния хранилищ в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Добавление первоначального состояния колонок
+
+Необходимо задать начальное состояние для всех созданных хранилищ.
+
+Определим начальное состояние хранилища колонок:
+
+```javascript
+import { defineStore } from "pinia";
+
+export const useColumnsStore = defineStore('columns', {
+	state: () => ({
+		columns: [],
+	}),
+	getters: {},
+	actions: {}
+})
+
+```
+
+Пока что колонки представлены пустым массивом.
+
+# Шаг 2. Добавление первоначального состояния фильтров
+
+Зададим начальные значения для хранилища фильтров:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useFiltersStore = defineStore('filters', {
+	state: () => ({
+		search: '',
+		users: [],
+		statuses: []
+	}),
+	getters: {},
+	actions: {},
+})
+```
+
+# Шаг 3. Добавление первоначального состояния пользователей
+
+Зададим начальное состояние для массива пользователей:
+
+```javascript
+import { defineStore } from "pinia";
+
+export const useUsersStore = defineStore('users', {
+  state: () => ({
+    users: [],
+  }),
+  getters: {},
+  actions: {},
+});
+```
+
+# Шаг 4. Добавление первоначального состояния задач
+
+Зададим начальное состояние для массива задач:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useTasksStore = defineStore('tasks', {
+	state: () => ({
+		tasks: [],
+	}),
+	getters: {},
+	actions: {},
+})
+```

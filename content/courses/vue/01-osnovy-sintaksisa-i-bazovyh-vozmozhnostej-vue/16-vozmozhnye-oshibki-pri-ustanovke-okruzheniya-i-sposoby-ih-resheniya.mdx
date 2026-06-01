@@ -1,0 +1,124 @@
+---
+title: "Возможные ошибки при установке окружения и способы их решения"
+type: article
+---
+
+# Возможные ошибки при установке окружения и способы их решения
+
+## Ошибка 1. Несовместимая версия Node.js
+
+При запуске `npm create vue@latest` или `npm run dev` появляется ошибка, связанная с версией Node.js.
+
+**Решение**: для работы с Vite и современными Vue-проектами требуется Node.js версии 18 или выше. Проверьте текущую версию:
+
+```bash
+node -v
+```
+
+Если версия ниже 18, обновите Node.js. Для управления версиями рекомендуется использовать [nvm](https://github.com/nvm-sh/nvm):
+
+```bash
+nvm install 18
+nvm use 18
+```
+
+## Ошибка 2. Ошибки при создании проекта через `npm create vue@latest`
+
+```
+npm ERR! code EACCES
+npm ERR! syscall mkdir
+```
+
+или
+
+```
+npm warn EBADENGINE Unsupported engine
+```
+
+**Решение**:
+
+*   Убедитесь, что используется Node.js 18+.
+*   На macOS/Linux: если проблема связана с правами доступа, не используйте `sudo` для установки. Вместо этого настройте npm на работу без прав суперпользователя:
+
+    ```bash
+    mkdir ~/.npm-global
+    npm config set prefix '~/.npm-global'
+    ```
+
+    Добавьте `~/.npm-global/bin` в переменную `PATH`.
+
+*   На Windows: используйте терминал с правами администратора или запускайте команды через WSL2.
+
+## Ошибка 3. Порт 5173 уже используется
+
+При запуске `npm run dev` появляется сообщение о том, что порт 5173 уже занят.
+
+**Решение**:
+
+*   Найдите процесс, занимающий порт:
+
+    ```bash
+    lsof -i :5173
+    ```
+
+*   Завершите его:
+
+    ```bash
+    kill -9 PID
+    ```
+
+*   Либо запустите Vite на другом порту:
+
+    ```bash
+    npm run dev -- --port 5174
+    ```
+
+## Ошибка 4. Порт 3000 уже используется (Docker)
+
+При запуске `docker-compose up` для json-server появляется ошибка:
+
+```
+Error: Port 3000 is already in use
+```
+
+**Решение**:
+
+*   Найдите и завершите процесс, использующий порт 3000:
+
+    ```bash
+    lsof -i :3000
+    kill -9 PID
+    ```
+
+*   Либо измените порт в `docker-compose.yml`:
+
+    ```yaml
+    ports:
+      - "3001:3000"
+    ```
+
+    В этом случае не забудьте обновить адрес в `vite.config.js` (настройка proxy).
+
+## Ошибка 5. Docker daemon не запущен
+
+```
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+```
+
+**Решение**: запустите Docker Desktop. На macOS и Windows это приложение с графическим интерфейсом. На Linux запустите службу:
+
+```bash
+sudo systemctl start docker
+```
+
+## Ошибка 6. Отсутствие необходимых прав на Linux/macOS
+
+```
+PermissionError(13, 'Permission denied')
+```
+
+**Решение**: назначьте все файлы проекта текущему пользователю:
+
+```bash
+sudo chown -R $USER:$USER .
+```

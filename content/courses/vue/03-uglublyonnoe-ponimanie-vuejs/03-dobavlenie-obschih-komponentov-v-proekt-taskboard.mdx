@@ -1,0 +1,213 @@
+---
+title: "Добавление общих компонентов в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание компонентов AppButton и AppTextarea
+
+На данном этапе нам потребуются два общих компонента. Создайте файлы `AppButton.vue` и `AppTextarea.vue` в директории `src/common/components`.
+
+Эти компоненты нужны для того, чтобы при добавлении кнопки или текстового поля не дублировать общие стили и логику. К примеру, в AppTextarea мы реализуем отображение ошибок валидации.
+
+# Шаг 2. Создание компонента AppButton
+
+Данный компонент будет универсальной стилизованной кнопкой для всего приложения.
+
+```html
+<template>
+  <button
+      class="button"
+      :type="type"
+  >
+    <slot/>
+  </button>
+</template>
+
+<script setup>
+defineProps({
+  type: {
+    type: String,
+    default: 'button'
+  }
+})
+
+</script>
+<style lang="scss" scoped>
+@import "@/assets/scss/app.scss";
+
+.button {
+  display: block;
+
+  box-sizing: border-box;
+  width: 196px;
+  margin: 0;
+  padding: 17px 0;
+
+  cursor: pointer;
+  transition: $animationSpeed;
+  text-align: center;
+  text-transform: uppercase;
+
+  color: $white-900;
+  border: none;
+  border-radius: 6px;
+  box-shadow: 0px 4px 8px $shadow-500;
+
+  @include m-s14-h21;
+
+  &--primary {
+    background-color: $blue-600;
+
+    &:hover:not(:active) {
+      background-color: $blue-500;
+      box-shadow: 0px 8px 16px $shadow-600;
+    }
+
+    &:active {
+      background-color: $blue-700;
+      box-shadow: 0px 4px 8px $shadow-500;
+    }
+  }
+
+  &--error {
+    background-color: $red-600;
+
+    &:hover:not(:active) {
+      background-color: $red-500;
+      box-shadow: 0px 8px 16px $shadow-600;
+    }
+
+    &:active {
+      background-color: $red-700;
+      box-shadow: 0px 4px 8px $shadow-500;
+    }
+  }
+
+  &--border {
+    color: $blue-gray-600;
+    border: 1px solid $blue-gray-600;
+    background-color: $white-900;
+
+    &:hover:not(:active) {
+      background-color: $white-900;
+    }
+
+    &:active {
+      background-color: $white-700;
+    }
+  }
+
+  &--disabled {
+    pointer-events: none;
+
+    opacity: 0.5;
+  }
+}
+</style>
+```
+
+# Шаг 3. Создание компонента AppTextarea
+
+Этот компонент предназначен для ввода текстовых данных и отображения ошибок валидации, переданных через входные параметры.
+
+```html
+<template>
+  <div class="text-field">
+<!--    Поле ввода текста-->
+    <textarea
+        :value="modelValue"
+        :name="props.name"
+        class="text-field__input"
+        :class="{'text-field__input--error': showError}"
+        :placeholder="props.placeholder"
+        :required="props.required"
+        @input="$emit('update:modelValue', $event.target.value)"
+    />
+<!--      Отображение ошибок валидации-->
+    <span
+        v-if="showError"
+        class="text-field__text"
+    >
+      {{ errorText }}
+    </span>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  modelValue: {
+    type: [String, Number],
+    required: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  placeholder: {
+    type: String,
+    default: ''
+  },
+  errorText: {
+    type: String,
+    default: ''
+  },
+  required: {
+    type: Boolean,
+    default: false
+  }
+})
+
+defineEmits(['update:modelValue'])
+
+const showError = computed(() => {
+  return !props.modelValue && !!props.errorText;
+})
+</script>
+
+<style lang="scss" scoped>
+@import "@/assets/scss/app.scss";
+.text-field {
+  position: relative;
+
+  &__input {
+    display: block;
+
+    box-sizing: border-box;
+    width: 100%;
+    height: 90px;
+    margin-top: 16px;
+    padding: 16px;
+
+    resize: none;
+    transition: border-color $animationSpeed;
+
+    color: $blue-gray-600;
+    border: 1px solid $gray-100;
+    border-radius: 6px;
+    outline: none;
+
+    @include r-s14-h21;
+
+    &:focus {
+      border-color: $blue-600;
+    }
+
+    &--error {
+      border-color: $red-600;
+    }
+  }
+
+  &__text {
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+
+    color: $red-600;
+
+    @include r-s10-h12;
+  }
+}
+</style>
+```

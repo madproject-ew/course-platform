@@ -1,0 +1,130 @@
+---
+title: "Работа над валидатором полей"
+type: demo
+---
+
+# Шаг 1. Определение правил валидации
+
+Для реализации общей валидации полей создадим набор отдельных функций. Создайте файл `validator.js` в директории `src/common`.
+
+Добавим регулярные выражения для проверки электронной почты и URL в файл `constants.js`:
+
+```javascript
+export const emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+export const urlRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)/;
+```
+
+Далее в файле `validator.js` импортируем эти регулярные выражения и опишем правила валидации:
+
+```javascript
+import { emailRegex, urlRegex } from './constants';
+import { isRef } from 'vue';
+
+const rules = {
+	required: {
+		rule: value => {
+			if (isRef(value)) return !!value.value.trim()
+			return !!value?.trim()
+		},
+		message: 'Поле обязательно для заполнения'
+	},
+	email: {
+		rule: value => {
+			if (isRef(value)) {
+				value = value.value
+			}
+			return !!value
+				? emailRegex.test(String(value).toLowerCase())
+				: true
+		},
+		message: 'Электронная почта имеет неверный формат'
+	},
+	url: {
+		rule: value => {
+			if (isRef(value)) {
+				value = value.value
+			}
+			return !!value ? urlRegex.test(value) : true
+		},
+		message: 'Ссылка имеет неверный формат'
+	}
+};
+```
+
+Обратите внимание на использование функции `isRef` --- она определяет, является ли значение объектом `ref`. Каждое правило представляет собой объект, ключом которого выступает имя валидации, а значением --- объект с полями `rule` (функция проверки) и `message` (текст ошибки).
+
+# Шаг 2. Добавление функции validate
+
+Напишем функцию валидации, которая принимает два параметра:
+
+*   value --- строка для проверки;
+*   appliedRules --- массив названий правил валидации.
+
+```javascript
+const validate = (value, appliedRules) => {
+  let error = '';
+  appliedRules.forEach(appliedRule => {
+    if (!rules[appliedRule]) {
+      return;
+    }
+    const { rule, message } = rules[appliedRule];
+    if (!rule(value)) {
+      error = message;
+    }
+  });
+  return error;
+};
+```
+
+# Шаг 3. Добавление функций validateFields и clearValidationErrors
+
+Реализуем функции для работы с набором валидируемых полей.
+
+Функция validateFields принимает два аргумента:
+
+*   fields --- объект с полями для проверки, например `{ myText: 'abc', myEmail: 'email@example.com' }`.
+*   validations --- объект с правилами валидаций, например:
+
+```javascript
+{
+	myText: {
+		error: '',
+		rules: ['required']
+	},
+  	myEmail: {
+		error: '',
+		rules: ['required', 'email']
+	}
+}
+```
+
+В свойство `error` записывается текст ошибки валидации. Свойство `rules` содержит список правил для конкретного поля. Важно, чтобы ключи объекта `validations` совпадали с ключами объекта `fields`.
+
+```javascript
+export const validateFields = (fields, validations) => {
+	let isValid = true;
+	Object.keys(validations).forEach(key => {
+		validations[key].error = validate(
+			fields[key],
+			validations[key].rules
+		);
+		if (validations[key].error) {
+			isValid = false;
+		}
+	});
+	return isValid;
+};
+```
+
+Добавим также функцию для сброса ошибок валидации:
+
+```javascript
+export const clearValidationErrors = (validations) => {
+	if (!validations) {
+		return;
+	}
+	Object.keys(validations).forEach(key => {
+		validations[key].error = ''
+	});
+};
+```

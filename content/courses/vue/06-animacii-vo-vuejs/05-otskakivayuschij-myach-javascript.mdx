@@ -1,0 +1,152 @@
+---
+title: "Отскакивающий мяч JavaScript"
+type: demo
+---
+
+# Шаг 1. Создание шаблона
+
+Ранее мы рассмотрели создание анимаций на чистом CSS. Теперь попробуем реализовать аналогичные эффекты средствами нативного JavaScript.
+
+Подготовим шаблон компонента:
+
+```html
+<template>
+    <demo-button @click="show = !show">Показать</demo-button>
+    <br>
+    <transition
+            @enter="enterAnimation"
+            @leave="leaveAnimation"
+            :css="false"
+    >
+        <img v-if="show" src="@/assets/ball.png" alt="img">
+    </transition>
+</template>
+```
+
+# Шаг 2. Добавление переменных
+
+Добавим реактивное свойство для управления видимостью изображения:
+
+```html
+<script setup>
+import DemoButton from './DemoButton.vue'
+import { ref } from 'vue'
+
+const show = ref(true)
+
+function clearAnimations (el, done) {
+  el.addEventListener('animationend', () => {
+    el.className = ''
+    done()
+  })
+}
+
+function enterAnimation (el, done) {
+  el.className = 'bounce'
+  clearAnimations(el, done)
+}
+
+function leaveAnimation (el, done) {
+  el.className = 'bounce-reverse'
+  clearAnimations(el, done)
+}
+</script>
+```
+
+Как видно из кода, компонент `transition` генерирует события `enter` и `leave`, которые обрабатываются методами `enterAnimation` и `leaveAnimation` соответственно.
+
+Свойство `:css="false"` явно указывает Vue, что анимация будет управляться исключительно через JavaScript.
+
+Каждый метод-обработчик принимает два параметра:
+
+*   `el` — DOM-элемент, над которым выполняется анимация.
+*   `done` — обязательный колбэк для хуков `enter` и `leave`. Без его вызова хуки отработают синхронно, и анимация перестанет функционировать.
+
+Обратите внимание на вспомогательную функцию `clearAnimations`, которая очищает CSS-классы после завершения анимации.
+
+# Шаг 3. Добавление CSS-классов
+
+Добавим CSS-классы с описанием анимации:
+
+```html
+
+<style scoped>
+    .bounce {
+        animation: bounce .5s;
+    }
+
+    .bounce-reverse {
+        animation: bounce .5s reverse;
+    }
+
+    @keyframes bounce {
+        0% {
+            transform: scale(0);
+        }
+        50% {
+            transform: scale(1.5);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+</style>
+```
+
+В данном примере мы задействовали два хука: `enter` и `leave`. Помимо них доступны и другие хуки жизненного цикла анимации.
+
+**Хуки входа**:
+
+*   before-enter — срабатывает перед началом анимации появления;
+*   enter — срабатывает во время анимации появления;
+*   after-enter — срабатывает по завершении анимации появления;
+*   enter-cancelled — срабатывает при отмене анимации появления.
+
+**Хуки выхода**:
+
+*   before-leave — срабатывает перед началом анимации ухода;
+*   leave — срабатывает во время анимации ухода;
+*   after-leave — срабатывает по завершении анимации ухода;
+*   leave-cancelled — срабатывает при отмене анимации ухода.
+
+```html
+<template>
+    <transition
+            @before-enter="onBeforeEnter"
+            @enter="onEnter"
+            @after-enter="onAfterEnter"
+            @enter-cancelled="onEnterCancelled"
+            @before-leave="onBeforeLeave"
+            @leave="onLeave"
+            @after-leave="onAfterLeave"
+            @leave-cancelled="onLeaveCancelled"
+    >
+        <!-- ... -->
+    </transition>
+</template>
+
+<script setup>
+    function onBeforeEnter (el) {}
+
+    function onEnter (el, done) {
+        // Этот хук должен вызвать метод done
+        done()
+    }
+
+    function onAfterEnter (el) {}
+
+    function onEnterCancelled (el) {}
+
+    function onBeforeLeave (el) {}
+
+    function onLeave (el, done) {
+        // Этот хук должен вызвать метод done
+        done()
+    }
+
+    function onAfterLeave (el) {}
+
+    // Будет работать только с директивой v-show
+    function onLeaveCancelled (el) {}
+</script>
+```

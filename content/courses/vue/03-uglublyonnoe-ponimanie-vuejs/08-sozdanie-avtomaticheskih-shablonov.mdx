@@ -1,0 +1,140 @@
+---
+title: "Создание автоматических шаблонов"
+type: article
+quiz:
+  - question: "Где хранится информация о том, какой шаблон (layout) использовать для конкретной страницы?"
+    type: single
+    options:
+      - "В файле конфигурации приложения main.js"
+      - "Внутри самого компонента страницы"
+      - "В свойстве meta объекта маршрута"
+      - "В глобальном хранилище Vuex"
+    answer: 2
+  - question: "Почему в компоненте-обработчике шаблонов используется shallowRef вместо обычного ref?"
+    type: single
+    options:
+      - "shallowRef работает быстрее при частых обновлениях"
+      - "ref не поддерживает хранение компонентов"
+      - "Внутреннее значение shallowRef не подвергается глубокому реактивному оборачиванию, что подходит для хранения компонентов"
+      - "shallowRef необходим для работы с асинхронными операциями"
+    answer: 2
+  - question: "Какой динамический элемент Vue.js используется для отображения компонента шаблона, определяемого в runtime?"
+    type: single
+    options:
+      - "<template :is=\"layout\">"
+      - "<component :is=\"layout\">"
+      - "<slot :name=\"layout\">"
+      - "<render :component=\"layout\">"
+    answer: 1
+---
+
+# Создание автоматических шаблонов
+
+Vue.js не имеет встроенного механизма шаблонов для страниц. Одним из наиболее распространённых подходов является создание компонента высшего порядка (higher order component) и его использование на всех страницах:
+
+```xml
+
+<template>
+    <my-layout>
+        Контент страницы
+    </my-layout>
+</template>
+```
+
+Такой подход имеет ряд недостатков:
+
+*   необходимо импортировать шаблон в каждую страницу;
+*   контент приходится оборачивать в дополнительный компонент;
+*   компоненты страниц вынуждены нести ответственность за выбор и отрисовку шаблона.
+
+С одной стороны, это не критично. Однако некоторые фреймворки (например Nuxt.js) уже реализуют подход с отделением шаблонов от компонентов страниц, и мы вполне можем воспроизвести аналогичную логику в собственном приложении.
+
+Для создания автоматических шаблонов потребуется один компонент-обработчик и набор компонентов-шаблонов. Информацию о том, какой шаблон использовать, мы будем хранить в свойстве `meta` объекта маршрута:
+
+```javascript
+export default [
+	{
+		path: '/',
+		name: 'HomeView',
+		component: () => import('../views/HomeView.vue'),
+		meta: { layout: 'AppLayoutMain' }
+	},
+]
+
+```
+
+Создадим компонент-обработчик, который динамически определяет и подключает нужный шаблон:
+
+```xml
+
+<template>
+    <!--  Динамический компонент-->
+    <component :is="layout">
+        <slot/>
+    </component>
+</template>
+
+<script setup>
+    import {shallowRef, watch} from 'vue'
+    import {useRoute} from 'vue-router'
+    import AppLayoutDefault from './AppLayoutDefault.vue'
+
+    const route = useRoute()
+    const layout = shallowRef(null)
+
+    // Наблюдаем за изменением маршрута
+    watch(
+            () => route.meta,
+            async meta => {
+                try {
+                    if (meta.layout) {
+                        // Пробуем найти компонент из свойства meta и динамически импортировать его
+                        const component = await import(`./${meta.layout}.vue`)
+                        layout.value = component?.default || AppLayoutDefault
+                    } else {
+                        layout.value = AppLayoutDefault
+                    }
+                } catch (e) {
+                    console.error('Динамический шаблон не найден. Установлен шаблон по-умолчанию.', e)
+                    layout.value = AppLayoutDefault
+                }
+            }
+    )
+
+</script>
+```
+
+Определим шаблон по умолчанию.
+
+AppLayoutDefault.vue:
+
+```xml
+<template>
+    <div class="default-layout">
+        <slot/>
+    </div>
+</template>
+```
+
+Этот шаблон не добавляет никакого дополнительного оформления, но при необходимости его легко расширить.
+
+Далее можно создать шаблон с сайдбаром и шапкой для основных страниц.
+
+AppLayoutMain.vue:
+
+```xml
+<template>
+    <div class="main-layout">
+        <app-layout-header/>
+        <app-layout-sidebar/>
+        <slot/>
+    </div>
+</template>
+
+<script setup>
+import AppLayoutHeader from './AppLayoutHeader.vue'
+import AppLayoutSidebar from './AppLayoutSidebar.vue'
+</script>
+```
+
+Теперь конфигурирование шаблона для конкретной страницы сводится к указанию нужного значения в `meta.layout`. Подробнее этот процесс будет рассмотрен в следующей демонстрации.

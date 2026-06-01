@@ -1,0 +1,672 @@
+---
+title: "Тестируем компонент в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Подготовка к тестированию компонентов
+
+В этой демонстрации мы покажем, как применять методику TDD при создании компонентов.
+
+Для работы потребуется дополнительный пакет `@pinia/testing`, который предварительно должен быть установлен в проекте.
+
+Тестирование будем демонстрировать на новом компоненте, который воспроизведёт функциональность `src/views/HomeView.vue`.
+
+Создадим директорию `src/views/__tests__`, добавим в неё файл `TestComponent.spec.js` и напишем базовую настройку:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	let wrapper, usersStore, tasksStore, columnsStore
+	beforeEach(async () => {
+		// Создаём экземпляр Pinia
+		const pinia = createTestingPinia({
+			createSpy: vi.fn,
+			stubActions: false,
+		})
+		// Создаём экземпляр компонента
+		wrapper = mount(TestComponent, {
+			global: {
+				plugins: [pinia, router] // добавляем Pinia и vue-router к компоненту
+			}
+		})
+		// Создаём экземпляры хранилищ
+		usersStore = useUsersStore()
+		tasksStore = useTasksStore()
+		columnsStore = useColumnsStore()
+		// Делаем изначальные запросы для заполнения хранилищ
+		await usersStore.fetchUsers()
+		await tasksStore.fetchTasks()
+		await columnsStore.fetchColumns()
+	})
+})
+```
+
+Добавим первый тест, подтверждающий, что компонент успешно монтируется:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+// ...
+  	it('should render', async () => {
+		expect(wrapper.exists).toBeTruthy()
+	})
+})
+```
+
+Если запустить тесты сейчас, они упадут — компонента ещё нет. Создадим `TestComponent.vue` в директории `src/views`:
+
+```html
+<template>
+    <main class="content">
+        <section class="desk">
+
+        </section>
+    </main>
+</template>
+
+<script setup>
+
+</script>
+
+<style lang="scss" scoped>
+
+</style>
+```
+
+Теперь тест проходит успешно.
+
+# Шаг 2. Тестируем наименование доски и кнопку создания задачи
+
+Добавим тест для проверки заголовка доски:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+	it('should have a proper title', () => {
+		const deskTitle = wrapper.find('[data-test="desk-title"]')
+		expect(deskTitle.text()).toBe('Design Coffee Lab')
+	})
+})
+```
+
+Для поиска элементов в компоненте используется атрибут `data-test`. Добавим разметку в компонент:
+
+```html
+  <main class="content">
+    <section class="desk">
+      <!--      Отображение дочерних маршрутов-->
+      <router-view/>
+      <!--      Шапка доски-->
+      <div class="desk__header">
+        <h1
+            class="desk__title"
+            data-test="desk-title"
+        >
+          Design Coffee Lab
+        </h1>
+      </div>
+    </section>
+  </main>
+```
+
+Убедимся, что тест проходит. Теперь добавим тесты для кнопки «Добавить столбец» — проверим её отрисовку и функциональность.
+
+Тест отрисовки:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+	it('should have a proper title', () => {
+		const deskTitle = wrapper.find('[data-test="desk-title"]')
+		expect(deskTitle.text()).toBe('Design Coffee Lab')
+	})
+  	it('should render add column button', () => {
+		const addColumnButton = wrapper.find('[data-test="desk-add"]')
+		expect(addColumnButton.text()).toBe('Добавить столбец')
+	})
+})
+```
+
+Добавим кнопку в шаблон:
+
+```html
+<template>
+  <main class="content">
+    <section class="desk">
+      <!--      Отображение дочерних маршрутов-->
+      <router-view/>
+      <!--      Шапка доски-->
+      <div class="desk__header">
+        <h1
+            class="desk__title"
+            data-test="desk-title"
+        >
+          Design Coffee Lab
+        </h1>
+        <!--        Добавили кнопку для добавления новой колонки-->
+        <button
+            class="desk__add"
+            type="button"
+            data-test="desk-add"
+        >
+          Добавить столбец
+        </button>
+      </div>
+    </section>
+  </main>
+</template>
+```
+
+Проверим, что нажатие на кнопку вызывает действие добавления колонки:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+	it('should have a proper title', () => {
+		const deskTitle = wrapper.find('[data-test="desk-title"]')
+		expect(deskTitle.text()).toBe('Design Coffee Lab')
+	})
+  	it('should render add column button', () => {
+		const addColumnButton = wrapper.find('[data-test="desk-add"]')
+		expect(addColumnButton.text()).toBe('Добавить столбец')
+	})
+	it('should trigger addColumn action', async () => {
+		const addColumnButton = wrapper.find('[data-test="desk-add"]')
+		addColumnButton.trigger('click')
+		expect(columnsStore.addColumn).toHaveBeenCalledTimes(1)
+	})
+})
+```
+
+Подключим обработчик клика в шаблоне:
+
+```html
+<template>
+  <main class="content">
+    <section class="desk">
+      <!--      Отображение дочерних маршрутов-->
+      <router-view/>
+      <!--      Шапка доски-->
+      <div class="desk__header">
+        <h1
+            class="desk__title"
+            data-test="desk-title"
+        >
+          Design Coffee Lab
+        </h1>
+        <!--        Добавили кнопку для добавления новой колонки-->
+        <button
+            class="desk__add"
+            type="button"
+            data-test="desk-add"
+            @click="columnsStore.addColumn"
+        >
+          Добавить столбец
+        </button>
+      </div>
+    </section>
+  </main>
+</template>
+
+<script setup>
+import { useColumnsStore } from '@/stores'
+
+// Определяем хранилища
+const columnsStore = useColumnsStore()
+</script>
+```
+
+Эти тесты подтверждают, что элемент корректно отрисован и правильно реагирует на пользовательские действия.
+
+# Шаг 3. Тестируем фильтр пользователей
+
+Проверим отображение фильтра по пользователям:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+  	it('should have user filter', () => {
+		const users = wrapper.findAll('[data-test="user-filter"]')
+		expect(users.length).toBe(8)
+	})
+})
+```
+
+Реализуем разметку фильтра в компоненте:
+
+```html
+<template>
+  <main class="content">
+    <section class="desk">
+      <!--      Отображение дочерних маршрутов-->
+      <router-view/>
+      <!--      Шапка доски-->
+      <div class="desk__header">
+        <h1
+            class="desk__title"
+            data-test="desk-title"
+        >
+          Design Coffee Lab
+        </h1>
+        <!--        Добавили кнопку для добавления новой колонки-->
+        <button
+            class="desk__add"
+            type="button"
+            data-test="desk-add"
+            @click="columnsStore.addColumn"
+        >
+          Добавить столбец
+        </button>
+
+        <div class="desk__filters">
+          <div class="desk__user-filter">
+<!--            Список пользователей-->
+            <ul class="user-filter">
+              <li
+                  v-for="user in usersStore.users"
+                  :key="user.id"
+                  :title="user.name"
+                  data-test="user-filter"
+                  class="user-filter__item"
+                  :class="{ active: filtersStore.filters.users.some(id => id === user.id) }"
+                  @click="filtersStore.applyFilters({ item: user.id, entity: 'users' })"
+              >
+                <a class="user-filter__button">
+                  <img
+                      :src="getPublicImage(user.avatar)"
+                      alt="Аватар юзера"
+                      width="24"
+                      height="24"
+                  />
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</template>
+
+<script setup>
+import { useUsersStore, useColumnsStore, useFiltersStore } from '@/stores'
+import { getPublicImage } from '../common/helpers'
+
+// Определяем хранилища
+const usersStore = useUsersStore()
+const columnsStore = useColumnsStore()
+const filtersStore = useFiltersStore()
+</script>
+```
+
+# Шаг 4. Тестируем фильтр статусов
+
+Проверим отображение фильтра по статусам:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+	it('should have statuses filter', () => {
+		const statuses	= wrapper.findAll('[data-test="status-filter"]')
+		expect(statuses.length).toBe(5)
+	})
+})
+```
+
+Добавим разметку фильтра статусов в компонент:
+
+```html
+<template>
+  <main class="content">
+    <section class="desk">
+      <!--      Отображение дочерних маршрутов-->
+      <router-view/>
+      <!--      Шапка доски-->
+      <div class="desk__header">
+        <h1
+            class="desk__title"
+            data-test="desk-title"
+        >
+          Design Coffee Lab
+        </h1>
+        <!--        Добавили кнопку для создания новой колонки-->
+        <button
+            class="desk__add"
+            type="button"
+            data-test="desk-add"
+            @click="columnsStore.addColumn"
+        >
+          Добавить столбец
+        </button>
+
+        <div class="desk__filters">
+          <div class="desk__user-filter">
+<!--            Список пользователей-->
+            <ul class="user-filter">
+              <li
+                  v-for="user in usersStore.users"
+                  :key="user.id"
+                  :title="user.name"
+                  data-test="user-filter"
+                  class="user-filter__item"
+                  :class="{ active: filtersStore.filters.users.some(id => id === user.id) }"
+                  @click="filtersStore.applyFilters({ item: user.id, entity: 'users' })"
+              >
+                <a class="user-filter__button">
+                  <img
+                      :src="getPublicImage(user.avatar)"
+                      alt="Аватар юзера"
+                      width="24"
+                      height="24"
+                  />
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="desk__meta-filter">
+            <!--            Список статусов-->
+            <ul class="meta-filter">
+              <li
+                  v-for="({ value, label }) in STATUSES"
+                  :key="value"
+                  data-test="status-filter"
+                  class="meta-filter__item"
+                  :class="{ active: filtersStore.filters.statuses.some(s => s === value) }"
+                  @click="filtersStore.applyFilters({ item: value, entity: 'statuses' })"
+              >
+                <a
+                    class="meta-filter__status"
+                    :class="`meta-filter__status meta-filter__status--color meta-filter__status--${value}`"
+                    :title="label"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</template>
+
+<script setup>
+import { useUsersStore, useColumnsStore, useFiltersStore } from '@/stores'
+import { getPublicImage } from '../common/helpers'
+import { STATUSES } from '../common/constants'
+
+// Определяем хранилища
+const usersStore = useUsersStore()
+const columnsStore = useColumnsStore()
+const filtersStore = useFiltersStore()
+</script>
+```
+
+# Шаг 5. Тестируем отображение колонок
+
+Проверим отрисовку колонок и их заголовков:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+	it('should have initial columns', () => {
+		const columns = wrapper.findAll('[data-test="desk-column-title"]')
+		expect(columns.length).toBe(5)
+		expect(columns[0].text()).toBe('Запланировано')
+		expect(columns[1].text()).toBe('В работе')
+		expect(columns[2].text()).toBe('На проверке')
+		expect(columns[3].text()).toBe('Выполнено')
+		expect(columns[4].text()).toBe('На удаление')
+	})
+})
+```
+
+Добавим блок с колонками в шаблон:
+
+```html
+<template>
+  <main class="content">
+    <section class="desk">
+      <!--      Отображение дочерних маршрутов-->
+      <router-view/>
+      <!--      Шапка доски-->
+      <div class="desk__header">
+        <h1
+            class="desk__title"
+            data-test="desk-title"
+        >
+          Design Coffee Lab
+        </h1>
+        <!--        Добавили кнопку для добавления новой колонки-->
+        <button
+            class="desk__add"
+            type="button"
+            data-test="desk-add"
+            @click="columnsStore.addColumn"
+        >
+          Добавить столбец
+        </button>
+
+        <div class="desk__filters">
+          <div class="desk__user-filter">
+<!--            Список пользователей-->
+            <ul class="user-filter">
+              <li
+                  v-for="user in usersStore.users"
+                  :key="user.id"
+                  :title="user.name"
+                  data-test="user-filter"
+                  class="user-filter__item"
+                  :class="{ active: filtersStore.filters.users.some(id => id === user.id) }"
+                  @click="filtersStore.applyFilters({ item: user.id, entity: 'users' })"
+              >
+                <a class="user-filter__button">
+                  <img
+                      :src="getPublicImage(user.avatar)"
+                      alt="Аватар юзера"
+                      width="24"
+                      height="24"
+                  />
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="desk__meta-filter">
+            <!--            Список статусов-->
+            <ul class="meta-filter">
+              <li
+                  v-for="({ value, label }) in STATUSES"
+                  :key="value"
+                  data-test="status-filter"
+                  class="meta-filter__item"
+                  :class="{ active: filtersStore.filters.statuses.some(s => s === value) }"
+                  @click="filtersStore.applyFilters({ item: value, entity: 'statuses' })"
+              >
+                <a
+                    class="meta-filter__status"
+                    :class="`meta-filter__status meta-filter__status--color meta-filter__status--${value}`"
+                    :title="label"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!--      Колонки и задачи-->
+      <div v-if="columnsStore.columns.length" class="desk__columns">
+        <!--        Показываем колонки-->
+        <desk-column
+            v-for="column in columnsStore.columns"
+            :key="column.id"
+            :column="column"
+            @update="columnsStore.updateColumn"
+            @delete="columnsStore.deleteColumn"
+        />
+      </div>
+    </section>
+  </main>
+</template>
+
+<script setup>
+import { useUsersStore, useColumnsStore, useFiltersStore } from '@/stores'
+import { getPublicImage } from '../common/helpers'
+import { STATUSES } from '../common/constants'
+import DeskColumn from '@/modules/columns/components/DeskColumn.vue'
+
+// Определяем хранилища
+const usersStore = useUsersStore()
+const columnsStore = useColumnsStore()
+const filtersStore = useFiltersStore()
+</script>
+```
+
+Помимо этого, необходимо добавить атрибут `data-test` в компонент `@/modules/columns/components/DeskColumn.vue`. Найдите элемент с заголовком колонки:
+
+```html
+      <!--      Показывает наименование колонки-->
+      <span v-if="!state.isInputShowed">
+        {{ state.columnTitle }}
+      </span>
+```
+
+И добавьте `data-test="desk-column-title"`:
+
+```html
+      <!--      Показывает наименование колонки-->
+      <span
+          v-if="!state.isInputShowed"
+          data-test="desk-column-title"
+      >
+        {{ state.columnTitle }}
+      </span>
+```
+
+# Шаг 6. Тестируем отображение задач в первой колонке
+
+В завершающем тесте убедимся, что дочерние компоненты отрисовываются корректно, и проверим, что в первой колонке отображаются нужные задачи:
+
+```javascript
+import { mount } from '@vue/test-utils'
+import '@/stores/__tests__/mockServices'
+import { describe, beforeEach, it, expect, vi } from 'vitest'
+import TestComponent from '../TestComponent.vue'
+import { createTestingPinia } from '@pinia/testing'
+import { useColumnsStore, useTasksStore, useUsersStore } from '@/stores'
+import router from '@/router'
+
+describe('TestComponent', () => {
+	// ...
+	it('should have tasks in the first column', () => {
+		const firstColumn = wrapper.find('[data-test="column-target-area"]')
+		const taskTitles = firstColumn.findAll('[data-test="task-title"]')
+		expect(taskTitles.length).toBe(5)
+		expect(taskTitles[0].text()).toBe('Задача № 2')
+		expect(taskTitles[1].text()).toBe('Задача № 6')
+		expect(taskTitles[2].text()).toBe('Задача № 10')
+		expect(taskTitles[3].text()).toBe('Задача № 14')
+		expect(taskTitles[4].text()).toBe('Задача № 18')
+	})
+})
+```
+
+Для корректной работы теста нужно добавить атрибуты `data-test` в компоненты колонки и задачи.
+
+В компоненте `@/modules/columns/components/DeskColumn.vue` замените:
+
+```html
+<div class="column__target-area">
+```
+
+На:
+
+```html
+    <div
+        data-test="column-target-area"
+        class="column__target-area"
+    >
+```
+
+В компоненте `src/modules/tasks/components/TaskCard.vue` найдите элемент заголовка задачи:
+
+```html
+        <h5
+            class="task__title"
+            :class="{ 'task__title--first': !task.user }"
+        >
+          {{ task.title }}
+        </h5>
+```
+
+И добавьте `data-test="task-title"`:
+
+```html
+        <h5
+            class="task__title"
+            :class="{ 'task__title--first': !task.user }"
+            data-test="task-title"
+        >
+          {{ task.title }}
+        </h5>
+```
+
+Теперь компонент полностью покрыт тестами, и мы можем быть уверены в его корректной работе.

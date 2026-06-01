@@ -1,0 +1,534 @@
+---
+title: "Виды взаимосвязей между компонентами"
+type: article
+quiz:
+  - question: "Каким механизмом данные передаются от родительского компонента к дочернему?"
+    type: single
+    options:
+      - "Через emit"
+      - "Через props"
+      - "Через Event Bus"
+      - "Через глобальное хранилище"
+    answer: 1
+  - question: "Какая функция используется для создания пользовательских событий в Composition API?"
+    type: single
+    options:
+      - "defineProps"
+      - "defineEmits"
+      - "createEvent"
+      - "useEmitter"
+    answer: 1
+  - question: "Какие параметры можно указать при объявлении props?"
+    type: multiple
+    options:
+      - "type — тип данных"
+      - "required — обязательность"
+      - "default — значение по умолчанию"
+      - "validator — функция валидации"
+      - "reactive — включение реактивности"
+    answers: [0, 1, 2, 3]
+---
+
+# Виды взаимосвязей между компонентами
+
+В любом крупном приложении компоненты неизбежно взаимодействуют друг с другом. Выделяют два основных вида таких взаимодействий:
+
+1.  Иерархическое (вертикальное).
+2.  Несвязное (горизонтальное).
+
+## Иерархическое взаимодействие
+
+Компоненты выстраиваются в иерархию: родительский компонент располагается сверху, дочерний — снизу. Данные между ними передаются в обоих направлениях — сверху вниз и снизу вверх.
+
+Для передачи данных от родителя к потомку используется механизм `props`. Это односторонний поток: если данные в родительском компоненте изменятся, обновление автоматически отразится и в дочернем.
+
+Напрямую изменять `props` в дочернем компоненте запрещено. При попытке сделать это Vue выведет предупреждение в консоли:
+
+```applescript
+[Vue warn]: Avoid mutating a prop directly since the value will be overwritten whenever the parent component re-renders. Instead, use a data or computed property based on the prop's value.
+```
+
+Если необходимо уведомить родителя об изменениях из дочернего компонента, следует создать пользовательское событие через `emit` (подробнее — ниже).
+
+Рассмотрим, как работают `props` на практике.
+
+Для объявления `props` в Composition API вызывается функция `defineProps`. Импортировать её не нужно — это макрос Vue, доступный во всех компонентах автоматически.
+
+`props` можно описать как массив строк:
+
+```javascript
+defineProps(["name"])
+```
+
+Или как объект, где ключ — имя свойства, а значение — его тип:
+
+```javascript
+defineProps({
+  name: String
+})
+```
+
+Рекомендуется передавать `props` с дополнительными параметрами: `type`, `required`, `default`, `validator`:
+
+```javascript
+defineProps({
+  name: {
+    type: String,
+    required: true,
+    default: "Иван",
+    validator: value => value.length > 0
+  }
+})
+```
+
+> На курсе мы советуем использовать `required` или `default`. Достаточно либо пометить свойство как обязательное, либо задать значение по умолчанию — указывать оба параметра одновременно нет необходимости.
+
+Начиная с Vue 3.5 реактивная деструктуризация `props` стабилизирована и включена по умолчанию. Переменные, полученные деструктуризацией результата `defineProps` в `<script setup>`, теперь являются реактивными.
+
+Это существенно упрощает объявление `props` с использованием нативного синтаксиса значений по умолчанию:
+
+Было:
+
+```javascript
+const props = withDefaults(
+  defineProps<{
+    greeting?: string
+  }>(),
+  {
+    greeting: 'hello world'
+  }
+)
+```
+
+Стало:
+
+```javascript
+const { greeting = 'hello world' } = defineProps<{
+  greeting?: string
+}>()
+```
+
+Рассмотрим каждое свойство подробнее.
+
+## Type
+
+`type` задаёт тип данных для `prop`. Допустимые типы:
+
+*   `String`,
+*   `Number`,
+*   `Boolean`,
+*   `Array`,
+*   `Object`,
+*   `Date`,
+*   `Function`,
+*   `Symbol`.
+
+Для одного `prop` можно указать несколько допустимых типов с помощью массива:
+
+```javascript
+defineProps({
+  id: {
+    type: [String, Number],
+    required: true
+  }
+})
+```
+
+При указании типа нет необходимости дополнительно описывать `null` или `undefined`.
+
+## Required
+
+`required` определяет, является ли `prop` обязательным для компонента. Принимает значение `true` или `false`.
+
+## Default
+
+`default` задаёт значение по умолчанию. Для сложных типов (`Array`, `Object`) необходимо использовать функцию, возвращающую нужное значение:
+
+```javascript
+defineProps({
+  names: {
+    type: Array,
+    default: () => []
+  }
+})
+```
+
+## Validator
+
+`validator` проверяет, соответствует ли `prop` правилам, заданным разработчиком. Например, следующий валидатор убеждается, что строка не пуста:
+
+```javascript
+defineProps({
+  name: {
+    type: String,
+    validator: value => value.length > 0
+  }
+})
+```
+
+Мы разобрали получение `props` в дочернем компоненте. Теперь посмотрим, как передать их из родительского.
+
+## Передача параметров из родительского компонента в дочерний
+
+В родительском компоненте необходимо импортировать дочерний:
+
+```xml
+<template>
+ <div>
+   <Child />
+ </div>
+</template>
+
+<script setup>
+  import Child from "./Child"
+</script>
+```
+
+Передача `props` бывает статической и динамической. Статическая подходит исключительно для неизменяемых строк:
+
+```xml
+<template>
+ <div>
+   <Child title="Дочерний компонент" />
+ </div>
+</template>
+
+<script setup>
+  import Child from "./Child"
+</script>
+```
+
+Для динамических строк, чисел, массивов и объектов используется `v-bind:` или краткая нотация `:`:
+
+```xml
+<template>
+ <div id="app">
+   <Child
+     :name="name"
+     :number="number"
+     :id-numbers="ids"
+     :user="user"
+   />
+ </div>
+</template>
+
+<script setup>
+  import { ref } from "vue"
+  import Child from "./Child"
+
+  const name = ref("Василий Петров")
+  const number = ref(5)
+  const ids = ref([1, 2, 3])
+  const user = ref({ name: "Иван" })
+</script>
+```
+
+Boolean-значения передаются несколькими способами. Для `true` достаточно указать атрибут без значения:
+
+```xml
+<template>
+ <div id="app">
+   <Child isVisible />
+ </div>
+</template>
+
+<script setup>
+  import Child from "./Child"
+</script>
+```
+
+Для передачи `false` применяется `v-bind`:
+
+```xml
+<template>
+ <div id="app">
+   <Child :isVisible="false" />
+ </div>
+</template>
+
+<script setup>
+  import Child from "./Child"
+</script>
+```
+
+Мы рассмотрели нисходящий поток данных. Теперь разберём обратное направление.
+
+## Пользовательские события
+
+Для регистрации пользовательского события применяется метод `emit`, принимающий следующие параметры:
+
+*   первый — имя события;
+*   второй и последующие — аргументы, передаваемые в родительский компонент.
+
+Синтаксис:
+
+```javascript
+emit({name}, {arg1}, {arg2}, ... {argN})
+```
+
+Метод `emit` получается через вызов `defineEmits`. В качестве аргумента передаётся массив имён событий или объект, где ключи — имена событий, а значения — функции валидации:
+
+```javascript
+/* Массив наименований событий */
+const emit = defineEmits(["apply", "reset"])
+
+/* Объект */
+const emit = defineEmits({
+  /* Например, проверим, что данные являются строкой */
+  apply: (data) => {
+    if (typeof data === "string") {
+      return true
+    } else {
+      return false
+    }
+  },
+
+  /* Без валидации */
+  reset: null
+})
+```
+
+Рассмотрим передачу данных на примере:
+
+```xml
+<template>
+ <div>
+   <input :value="name" @input="setName" />
+ </div>
+</template>
+
+<script setup>
+  defineProps({
+    name: {
+      type: String,
+      required: true,
+      validator: value => value.length > 0
+    }
+  })
+
+  const emit = defineEmits(["setName"])
+
+  const setName = (event) => {
+    emit("setName", event.target.value)
+  }
+</script>
+```
+
+При вводе данных событие `input` вызывает метод `setName`, который в свою очередь «эмитит» значение в родительский компонент. В простых случаях отдельный метод можно не создавать и передавать данные непосредственно из `template`:
+
+```xml
+<template>
+ <div>
+   <input :value="name" @input="emit('setName', $event.target.value)" />
+ </div>
+</template>
+
+<script setup>
+  defineProps({
+    name: {
+      type: String,
+      required: true,
+      validator: value => value.length > 0
+    }
+  })
+
+  const emit = defineEmits(["setName"])
+</script>
+```
+
+На стороне родительского компонента события принимаются так:
+
+```xml
+<template>
+ <div id="app">
+   <Child
+     :name="name"
+     @setName="setName"
+   />
+ </div>
+</template>
+
+<script setup>
+  import { ref } from "vue"
+  import Child from "./Child";
+
+  const name = ref("Василий Петров")
+
+  const setName = (value) => {
+    name.value = value
+  }
+</script>
+```
+
+В простых случаях обработку можно выполнить прямо в `template`:
+
+```xml
+<template>
+ <div id="app">
+   <Child
+     :name="name"
+     @setName="name = $event"
+   />
+ </div>
+</template>
+
+<script setup>
+  import { ref } from "vue"
+  import Child from "./Child";
+
+  const name = ref("Василий Петров")
+</script>
+```
+
+Vue предоставляет удобную конструкцию для двустороннего обмена данными между компонентами — подробнее о ней поговорим в следующей главе.
+
+## Несвязное взаимодействие
+
+Несвязное взаимодействие применяется нечасто. Оно необходимо для связывания компонентов, не объединённых иерархически.
+
+Такой паттерн носит название `Event Bus`. Реализуем его.
+
+Поскольку Vue 3 больше не поддерживает Event Bus из коробки, воспользуемся библиотекой `tiny-emitter`. Создадим файл `event-bus.js`:
+
+```javascript
+import emitter from 'tiny-emitter/instance'
+
+export default {
+  $on: (...args) => emitter.on(...args),
+  $once: (...args) => emitter.once(...args),
+  $off: (...args) => emitter.off(...args),
+  $emit: (...args) => emitter.emit(...args)
+}
+```
+
+Добавим два компонента: первый отправляет данные, второй — принимает. Компонент-отправитель использует `EventBus.$emit`:
+
+```xml
+<template>
+ <div>
+   Child 1
+   <button @click="emitMethod">Передать данные</button>
+ </div>
+</template>
+
+<script setup>
+  import EventBus from "./event-bus"
+
+  const emitMethod = () => {
+    EventBus.$emit("emitFromChild1", "Привет!")
+  }
+</script>
+```
+
+Принимающий компонент регистрирует слушатель `EventBus.$on` в хуке `onMounted`:
+
+```xml
+<template>
+ <div>Это данные из компонента 1: {{ emitData }}</div>
+</template>
+
+<script setup>
+  import { ref, onMounted } from "vue"
+  import EventBus from "./event-bus"
+
+  const emitData = ref(null)
+
+  onMounted(() => {
+    EventBus.$on("emitFromChild1", (data) => {
+      emitData.value = data
+    })
+  })
+</script>
+```
+
+Этот паттерн прост в реализации и иногда бывает полезен, однако злоупотреблять им не стоит. Хотя Event Bus кажется быстрым решением, в долгосрочной перспективе он почти всегда ведёт к трудностям при поддержке кода. В подавляющем большинстве случаев, когда напрашивается Event Bus, лучше использовать глобальное хранилище данных, о котором мы поговорим позднее.
+
+## Новое в версии Vue 3.5
+
+### Улучшения пользовательских элементов
+
+В версии 3.5 исправлены многие давние проблемы, связанные с API `defineCustomElement()`, и добавлен ряд новых возможностей:
+
+*   Поддержка конфигурации приложения для пользовательских элементов через опцию `configureApp`.
+*   Возможность создавать пользовательские элементы без Shadow DOM, передавая `shadowRoot: false`.
+*   Поддержка опции `nonce`, прикрепляемой к тегам `<style>`, которые внедряются пользовательскими элементами.
+
+Эти опции передаются вторым аргументом в `defineCustomElements`:
+
+```javascript
+import MyElement from './MyElement.ce.vue'
+
+defineCustomElements(MyElement, {
+  shadowRoot: false,
+  nonce: 'qwerty',
+  configureApp(app) {
+    app.config.errorHandler = ...
+  }
+})
+```
+
+Подробная информация доступна в [документации Vue.js](https://vuejs.org/api/custom-elements).
+
+### Улучшенный useTemplateRef
+
+`useTemplateRef` возвращает ref-ссылку, значение которой автоматически синхронизируется с элементом или компонентом в `<template>` с соответствующим атрибутом ref. Основные преимущества:
+
+*   Прямой доступ к DOM-элементам и дочерним компонентам. Можно взаимодействовать с DOM или дочерними компонентами, читать их свойства, вызывать методы и управлять фокусом без обращения к виртуальному DOM.
+*   Отсутствие лишних обновлений. Изменения в DOM через ссылки не вызывают повторный рендеринг, что позволяет манипулировать элементами без потери производительности.
+*   Возможность автоматически отслеживать изменения ссылки на шаблон при помощи `watchEffect`.
+
+Кроме того, Template Refs позволяют анимировать элемент через JavaScript, изменять внутренний текст или HTML, а также передавать ссылку на элемент как `prop`.
+
+```javascript
+import { ref, onMounted } from 'vue';
+
+export default {
+  setup() {
+    const inputElement = ref(null); // Создаём ссылку
+
+    onMounted(() => {
+      // Доступ к элементу после монтирования компонента
+      console.log(inputElement.value); // Здесь будет сам элемент <input>
+    });
+
+    return {
+      inputElement,
+    };
+  },
+};
+```
+
+### Доступ к host-элементу в Custom Elements
+
+В Vue 3 функция `useHost` предназначена для использования внутри компонентов, созданных через `defineCustomElement`. Она возвращает host-элемент текущего custom element, что позволяет взаимодействовать с ним напрямую.
+
+> **Важно:** `useHost()` работает только внутри custom elements и не предназначена для доступа к родительскому элементу произвольного компонента.
+
+Пример использования `useHost`:
+
+```javascript
+import { useHost, defineCustomElement } from 'vue';
+
+const MyElement = defineCustomElement({
+  setup() {
+    const host = useHost();
+    console.log("Host element:", host);
+  }
+});
+```
+
+### data-allow-mismatch
+
+Атрибут `data-allow-mismatch` используется при серверном рендеринге (SSR) для подавления предупреждений о несоответствии гидрации (hydration mismatch). Такие несоответствия возникают, когда HTML, сгенерированный на сервере, отличается от DOM, который Vue ожидает создать на клиенте.
+
+Этот атрибут появился в Vue 3.5 и полезен в ситуациях, когда расхождение между серверным и клиентским рендерингом ожидаемо и безопасно — например, при отображении текущей даты или времени.
+
+Пример — компонент, отображающий текущее время (на сервере и клиенте оно будет различаться):
+
+```html
+<template>
+  <span data-allow-mismatch>{{ currentTime }}</span>
+</template>
+```
+
+Без `data-allow-mismatch` Vue выдаст предупреждение в консоли о несоответствии гидрации. С этим атрибутом предупреждение подавляется, и Vue корректно перехватит клиентское значение.

@@ -1,0 +1,38 @@
+---
+title: "Добавление логики в шаблон в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Работа над скриптами
+
+Настало время добавить логику в компоненты. Вся логика однофайловых компонентов размещается в блоке `<script>`.
+
+В этой демонстрации мы добавим `<script>` в файлы шаблонов — layout.
+
+# Шаг 2. Добавление импорта компонента AppLayoutHeader в AppLayout.vue
+
+На данный момент в наших шаблонах отсутствует логика. Необходимо импортировать компонент `AppLayoutHeader` в `AppLayout`.
+
+Добавим блок `<script setup>` в файл `AppLayout.vue`:
+
+```javascript
+<script setup>
+import AppLayoutHeader from "./AppLayoutHeader.vue";
+</script>
+```
+
+Компонент `AppLayoutHeader` уже добавлен в `template` на предыдущих шагах, и итоговый файл должен выглядеть так:
+
+```javascript
+<template>
+  <div class="app_layout">
+    <app-layout-header />
+    <slot />
+  </div>
+</template>
+
+<script setup>
+import AppLayoutHeader from "./AppLayoutHeader.vue";
+</script>
+```
+

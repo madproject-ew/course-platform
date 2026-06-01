@@ -1,0 +1,503 @@
+---
+title: "Создаём сервисы в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание базового сервиса
+
+Приступаем к реализации сервисов для нашего проекта. В дальнейшем мы заменим моковые данные на настоящие, получаемые с сервера и сохраняемые в базу данных.
+
+Создайте директорию `src/services` и в ней файл `HttpClient.js`. Это будет базовый класс, от которого наследуются все остальные сервисы.
+
+```javascript
+export class HttpClient {
+	/*
+		Конструктор принимает параметры:
+		* httpProvider — провайдер, который будет выполнять подключение
+		* getToken — функция для получения токена аутентификации
+		* baseUrl — базовый URL для конкретного ресурса
+  */
+	constructor (options) {
+		if (!options.baseURL) {
+			throw Error('[HttpClient]: Base url is empty')
+		}
+		this.httpProvider = options.httpProvider
+		this.getToken = options.getToken
+		this.baseUrl = options.baseURL
+	}
+	// Метод для построения запросов
+	buildRequest (options = {}) {
+		const token = this.getToken()
+		// Добавляем хедеры
+		let headers = {
+			'Content-Type': 'application/json',
+			Authorization: token ? `Bearer ${token}` : '',
+		}
+		if (options.headers) {
+			headers = {
+				...headers,
+				...options.headers
+			}
+		}
+
+		return {
+			baseUrl: this.baseUrl,
+			headers,
+			...options,
+		}
+	}
+	// Метод проверки, если путь запроса начинается с /
+	// Это поможет предотвратить ситуации, когда запрос my-domain.com/tasks/create выглядит так: my-domain.com/taskscreate
+	checkPath(path) {
+		if (!path.startsWith('/')) {
+			throw Error('Путь должен начинаться с /', path)
+		}
+	}
+
+	async get (path, options) {
+		this.checkPath(path)
+		return this.httpProvider.get(path, this.buildRequest(options))
+	}
+
+	async post (path, options) {
+		this.checkPath(path)
+		return this.httpProvider.post(path, this.buildRequest(options))
+	}
+
+	async put (path, options) {
+		this.checkPath(path)
+		return this.httpProvider.put(path, this.buildRequest(options))
+	}
+
+	async delete (path, options) {
+		this.checkPath(path)
+		return this.httpProvider.delete(path, this.buildRequest(options))
+	}
+}
+```
+
+# Шаг 2. Создание провайдера Fetch
+
+Для выполнения HTTP-запросов к серверу нам нужен провайдер. В данном проекте мы воспользуемся встроенным [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
+
+Создайте директорию `src/services/providers` и два файла: `index.js` и `FetchProvider.js`.
+
+Содержимое `FetchProvider.js`:
+
+```javascript
+export default class FetchProvider {
+	interceptors = []
+	// Метод для добавления параметров запроса
+	computeQueryParams (query) {
+		if (!query) return ''
+		const queryParams = new URLSearchParams(query)
+		return '?' + queryParams.toString()
+	}
+	// Метод для конкретного запроса
+	request (options) {
+		const body = options.data ? JSON.stringify(options.data) : null
+		return fetch(
+			options.baseUrl + options.path + this.computeQueryParams(options.query),
+			{ headers: options.headers, body, method: options.method }
+		)
+			.then((response) => {
+				if (!response.ok) {
+					return Promise.reject(response)
+				}
+				return response
+			})
+			.then((response) => {
+				if (response.status > 201) return Promise.resolve(response)
+				return response.json()
+			})
+			.then((data) => {
+				return data
+			})
+			.catch(async (response) => {
+				const message = await this.onError(response)
+				throw Error(message)
+			})
+	}
+	// Метод для добавления перехватчиков
+	addInterceptor (interceptor) {
+		if (interceptor && interceptor.onError) {
+			this.interceptors.push(interceptor)
+		} else {
+			throw Error('Interceptor не поддерживается')
+		}
+		return this
+	}
+	// Метод для обработки ошибок
+	async onError (response) {
+		if (response.json) {
+			const { error } = await response.json()
+			const { message, statusCode } = error
+			this.interceptors.forEach((interceptor) => {
+				if (interceptor.onError) {
+					interceptor.onError(statusCode, message)
+				}
+			})
+			throw Error(message)
+		} else if (response.message) {
+			throw Error(response.message)
+		}
+	}
+
+	get (path, requestOptions) {
+		return this.request({ path, method: 'GET', ...requestOptions })
+	}
+
+	post (path, requestOptions) {
+		return this.request({ path, method: 'POST', ...requestOptions })
+	}
+
+	put (path, requestOptions) {
+		return this.request({ path, method: 'PUT', ...requestOptions })
+	}
+
+	delete (path, requestOptions) {
+		return this.request({ path, method: 'DELETE', ...requestOptions })
+	}
+}
+```
+
+В файле `index.js` создадим экземпляр провайдера и подключим перехватчик ошибок:
+
+```javascript
+import FetchProvider from './FetchProvider'
+import { useAuthStore } from '@/stores'
+
+const httpProvider = new FetchProvider()
+httpProvider.addInterceptor(
+	{
+		onError: async (status) => {
+			// Если с сервиса приходит ошибка 401 Unauthorized, выполняем выход из системы
+			if (status === 401) {
+				const authStore = useAuthStore()
+				if (authStore.isAuthenticated) await authStore.logout()
+			}
+		},
+	}
+)
+
+export default httpProvider
+```
+
+Здесь задействован `AuthStore` -- подробнее о его устройстве и использовании мы поговорим в следующих демо. Пока обратите внимание на то, как он интегрируется с провайдером `Fetch`.
+
+# Шаг 3. Создание токен-менеджера
+
+Для удобной работы с токеном аутентификации создадим отдельный менеджер. Он инкапсулирует операции создания, получения и удаления токена, а также позволяет легко заменить хранилище (например, с localStorage на cookies) без изменения остального кода.
+
+Создайте файл `src/services/token-manager.js`:
+
+```javascript
+const AUTH_KEY = 'taskboard-auth-key'
+
+export function getToken() {
+  return localStorage.getItem(AUTH_KEY)
+}
+
+export function setToken(token) {
+  return localStorage.setItem(AUTH_KEY, token)
+}
+
+export function removeToken() {
+  return localStorage.removeItem(AUTH_KEY)
+}
+```
+
+# Шаг 4. Добавление сервиса аутентификации
+
+Теперь переходим к реализации конкретных сервисов. Каждый из них отвечает за свою область: аутентификация, задачи, комментарии и т.д.
+
+Начнём с сервиса аутентификации. Создайте файл `src/services/auth-service.js`:
+
+```javascript
+import { HttpClient } from './HttpClient'
+import { getToken } from './token-manager'
+import httpProvider from '@/services/providers'
+
+const BASE_URL = '/api'
+
+class AuthService extends HttpClient {
+	// Метод входа в систему
+	async login (email, password) {
+		try {
+			return await this.post('/login', {
+				data: {
+					email, password
+				}
+			})
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	// Метод получения данных текущего пользователя
+	async whoAmI () {
+		try {
+			return await this.get('/whoAmI')
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	// Метод выхода из системы
+	async logout () {
+		try {
+			await this.delete('/logout')
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+}
+
+export default new AuthService({
+	httpProvider,
+	baseURL: BASE_URL,
+	getToken,
+})
+```
+
+Обратите внимание: при замене провайдера (например, на Axios) сами сервисы менять не нужно -- достаточно подставить другой провайдер.
+
+# Шаг 5. Добавление сервиса колонок
+
+Создайте файл `src/services/columns-service.js`:
+
+```javascript
+import { HttpClient } from './HttpClient'
+import { getToken } from './token-manager'
+import httpProvider from '@/services/providers'
+
+const BASE_URL = '/api/columns'
+
+class ColumnsService extends HttpClient {
+	async fetchColumns() {
+		try {
+			return this.get('/')
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async createColumn(column) {
+		try {
+			return this.post('/', { data: column})
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async updateColumns(column) {
+		try {
+			return this.put(`/${column.id}`, { data: column })
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async deleteColumns(id) {
+		try {
+			await this.delete(`/${id}`)
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+}
+
+export default new ColumnsService({
+	httpProvider,
+	baseURL: BASE_URL,
+	getToken,
+})
+```
+
+# Шаг 6. Добавление сервиса комментариев
+
+Создайте файл `src/services/comments-service.js`:
+
+```javascript
+import { HttpClient } from './HttpClient'
+import { getToken } from './token-manager'
+import httpProvider from '@/services/providers'
+
+const BASE_URL = '/api/comments'
+
+class CommentsService extends HttpClient {
+	async fetchComments() {
+		try {
+			return this.get('/')
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async createComment(comment) {
+		try {
+			return this.post('/', { data: comment})
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+}
+
+export default new CommentsService({
+	httpProvider,
+	baseURL: BASE_URL,
+	getToken,
+})
+```
+
+# Шаг 7. Добавление сервиса задач
+
+Создайте файл `src/services/tasks-service.js`:
+
+```javascript
+import { HttpClient } from './HttpClient'
+import { getToken } from './token-manager'
+import httpProvider from '@/services/providers'
+import taskStatuses from '@/common/enums/taskStatuses'
+import { getTimeStatus } from '@/common/helpers'
+
+const BASE_URL = '/api/tasks'
+
+class TasksService extends HttpClient {
+	createRequest(task) {
+		// Убираем из задачи ненужные параметры
+    const { ticks, comments, status, timeStatus, user, ...request } = task
+    return request
+	}
+	normalizeTask(task) {
+		return {
+      ...task,
+      ticks: task.ticks || [],
+      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      status: task.statusId ? taskStatuses[task.statusId] : '',
+      timeStatus: getTimeStatus(task.dueDate)
+    }
+	}
+	async fetchTasks() {
+		try {
+			const tasks = await this.get('/')
+			return tasks.map(task => this.normalizeTask(task))
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async createTask(task) {
+		try {
+			const newTask = await this.post('/', { data: this.createRequest(task)})
+			return this.normalizeTask(newTask)
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async updateTask(task) {
+		try {
+			await this.put(`/${task.id}`, { data: this.createRequest(task) })
+			return this.normalizeTask(task)
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async deleteTask(id) {
+		try {
+			await this.delete(`/${id}`)
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+}
+
+export default new TasksService({
+	httpProvider,
+	baseURL: BASE_URL,
+	getToken,
+})
+```
+
+# Шаг 8. Добавление сервиса пользователей
+
+Создайте файл `src/services/users-service.js`:
+
+```javascript
+import { HttpClient } from './HttpClient'
+import { getToken } from './token-manager'
+import httpProvider from '@/services/providers'
+
+const BASE_URL = '/api/users'
+
+class UsersService extends HttpClient {
+	async fetchUsers() {
+		try {
+			return this.get('/')
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+}
+
+export default new UsersService({
+	httpProvider,
+	baseURL: BASE_URL,
+	getToken,
+})
+```
+
+# Шаг 9. Добавление сервиса подзадач
+
+Создайте файл `src/services/ticks-service.js`:
+
+```javascript
+import { HttpClient } from './HttpClient'
+import { getToken } from './token-manager'
+import httpProvider from '@/services/providers'
+
+const BASE_URL = '/api/ticks'
+
+class TicksService extends HttpClient {
+	async fetchTicks() {
+		try {
+			return this.get('/')
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async createTick(tick) {
+		try {
+			return this.post('/', { data: tick})
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async updateTick(tick) {
+		try {
+			return this.put(`/${tick.id}`, { data: tick })
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+	async deleteTick(id) {
+		try {
+			await this.delete(`/${id}`)
+		} catch (e) {
+			throw Error(e)
+		}
+	}
+}
+
+export default new TicksService({
+	httpProvider,
+	baseURL: BASE_URL,
+	getToken,
+})
+```
+
+# Шаг 10. Создание единой точки экспорта
+
+Чтобы импортировать все сервисы из одного места, создадим файл-экспортёр `src/services/index.js`:
+
+```javascript
+export { default as authService } from './auth-service'
+export { default as columnsService } from './columns-service'
+export { default as commentsService } from './comments-service'
+export { default as tasksService } from './tasks-service'
+export { default as userService } from './users-service'
+export { default as ticksService } from './ticks-service'
+```

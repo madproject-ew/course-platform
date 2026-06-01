@@ -1,0 +1,92 @@
+---
+title: "Создание хранилища Store"
+type: article
+quiz:
+  - question: "Какие два аргумента принимает функция defineStore при создании хранилища Pinia?"
+    type: single
+    options:
+      - "Имя компонента и массив зависимостей"
+      - "Уникальный идентификатор хранилища и объект с его свойствами"
+      - "Путь к файлу и функцию инициализации"
+      - "Тип хранилища и начальное состояние"
+    answer: 1
+  - question: "В альтернативном синтаксисе defineStore с setup-функцией, чему соответствуют переменные ref, computed и обычные функции?"
+    type: single
+    options:
+      - "ref → getters, computed → state, функции → actions"
+      - "ref → actions, computed → state, функции → getters"
+      - "ref → state, computed → getters, функции → actions"
+      - "ref → state, computed → actions, функции → getters"
+    answer: 2
+---
+
+# Создание хранилища Store
+
+Чтобы начать работу с Pinia, необходимо определить хранилище данных через функцию `defineStore`:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useTodosStore = defineStore('todos', {
+  state: () => (
+    {
+      todos: []
+    }
+  ),
+  getters: {
+    getTodos: (state) => state.todos,
+  },
+  actions: {
+    addTodo(todo) {
+      this.todos.push(todo)
+    },
+  },
+})
+```
+
+Функция `defineStore` принимает два аргумента:
+
+1.  Уникальный идентификатор хранилища.
+2.  Объект со свойствами хранилища:
+
+*   state — состояние, то есть данные хранилища;
+*   actions — методы для изменения состояния;
+*   getters — вычисляемые свойства для извлечения данных.
+
+Существует и альтернативный синтаксис объявления хранилища:
+
+```javascript
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useTodosStore = defineStore('todos', () => {
+  const todos = ref([])
+  const getTodos = computed(() => todos.value)
+  function addTodo(todo) {
+    todos.value.push(todo)
+  }
+
+  return { todos, getTodos, addTodo }
+})
+```
+
+В этом варианте переменные `ref` превращаются в свойства `state`, `computed` — в `getters`, а функции — в `actions`.
+
+## Использование хранилища в компонентах
+
+Объявленное хранилище можно импортировать и использовать в любом компоненте приложения:
+
+```javascript
+import { useTodosStore } from '@/stores/todos'
+
+const store = useTodosStore()
+
+const todos = store.getTodos
+
+const newTodo = {
+  task: 'Сделать что-то',
+  isCompleted: false
+}
+
+store.addTodo(newTodo)
+```

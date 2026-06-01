@@ -1,0 +1,168 @@
+---
+title: "Тестирование умных и глупых компонентов"
+type: article
+quiz:
+  - question: "Какую функцию используют для создания тестового экземпляра Pinia при тестировании умных компонентов?"
+    type: single
+    options:
+      - "createPinia"
+      - "createTestingPinia"
+      - "setActivePinia"
+      - "usePinia"
+    answer: 1
+  - question: "Каким методом объекта wrapper можно проверить, что компонент сгенерировал определённое событие?"
+    type: single
+    options:
+      - "wrapper.events()"
+      - "wrapper.emitted()"
+      - "wrapper.triggered()"
+      - "wrapper.dispatched()"
+    answer: 1
+  - question: "Какие действия корректны при тестировании глупого компонента кнопки?"
+    type: multiple
+    options:
+      - "Проверка отображаемого текста кнопки"
+      - "Эмуляция клика и проверка сгенерированного события"
+      - "Проверка внутренней реализации обработчика клика"
+      - "Передача props и проверка рендеринга"
+      - "Проверка вызова API при нажатии"
+    answers: [0, 1, 3]
+---
+
+# Тестирование умных и глупых компонентов
+
+## Глупые компоненты
+
+Рассмотрим простой компонент кнопки, который принимает параметр `label` и генерирует событие `click`:
+
+```xml
+<!-- AppButton.vue -->
+<template>
+    <button @click="$emit('click')">{{ label }}</button>
+</template>
+
+<script setup>
+    defineProps({
+        label: {
+            type: String,
+            required: true,
+        },
+    })
+</script>
+```
+
+Напишем тесты для проверки его работы:
+
+```javascript
+// AppButton.spec.js
+import { mount } from "@vue/test-utils";
+import { describe, expect, it } from "vitest";
+import AppButton from "./AppButton.vue";
+
+// Указываем название блока тестов
+describe("AppButton", () => {
+	// Тестируем корректность отображения типа кнопки
+	it("Should display label", () => {
+		// Создаём компонент
+		const wrapper = mount(AppButton, {
+			props: {
+				label: "submit",
+			},
+		});
+
+		// Проверяем, что кнопка отображает правильный лейбл
+		expect(wrapper.text()).toBe("submit");
+	});
+
+	// Тестируем корректность отправки события
+	it("Emits click event", () => {
+		// Создаём компонент
+		const wrapper = mount(AppButton, {
+			props: {
+				label: "submit",
+			},
+			shallow: true,
+		});
+
+		// Эмулируем нажатие кнопки
+		wrapper.get('button').trigger("click");
+
+		// Проверяем, что событие было отправлено — toBeTruthy проверяет, что значение не falsy-значение (false, null, undefined, ...)
+		expect(wrapper.emitted().click).toBeTruthy();
+	});
+});
+```
+
+## Умные компоненты
+
+Теперь протестируем компонент, который работает с хранилищем Pinia и использует предыдущий компонент:
+
+```javascript
+// counter-store.js
+import { defineStore } from "pinia";
+
+export const useCounterStore = defineStore("counter", {
+	state: () => ({
+		count: 0,
+	}),
+	actions: {
+		increment () {
+			this.count++;
+		},
+	},
+});
+```
+
+```xml
+<!-- App.vue -->
+<template>
+    <AppButton label="increment" @click="counterStore.increment"/>
+    <p>{{ counterStore.count }}</p>
+</template>
+
+<script setup>
+    import { useCounterStore } from "./store";
+
+    const counterStore = useCounterStore();
+</script>
+```
+
+Тест для этого компонента:
+
+```javascript
+// App.spec.js
+import { mount } from "@vue/test-utils";
+import { createTestingPinia } from "@pinia/testing";
+import { beforeEach, describe, expect, it } from "vitest";
+import AppComponent from './App.vue';
+import { useCounterStore } from './store';
+
+describe("Counter test", () => {
+	let counterStore, wrapper;
+
+	// Выполняем перед каждым тестом
+	beforeEach(() => {
+		// Создаем экземпляр Pinia
+		const pinia = createTestingPinia({
+			createSpy: vi.fn,
+			stubActions: false,
+		});
+		// Создаем экземпляр компонента
+		wrapper = mount(AppComponent, {
+			global: {
+				plugins: [pinia] // добавляем Pinia в компонент
+			}
+		});
+		// Инициализируем хранилище
+		counterStore = useCounterStore();
+	});
+
+	it("Should increment count", () => {
+		wrapper.find("button").trigger("click");
+
+		expect(wrapper.find("p").text()).toBe("1");
+	});
+});
+```
+
+Этот тест монтирует компонент вместе со всеми дочерними компонентами и проверяет его взаимодействие с хранилищем.

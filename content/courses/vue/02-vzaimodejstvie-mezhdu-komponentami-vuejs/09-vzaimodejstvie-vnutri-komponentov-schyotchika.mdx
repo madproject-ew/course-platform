@@ -1,0 +1,117 @@
+---
+title: "Взаимодействие внутри компонентов счётчика"
+type: demo
+---
+
+# Шаг 1. Добавление взаимодействий в компонент счётчика
+
+В этой абстрактной демонстрации мы продолжим работу над компонентом счётчика и вынесем его функции в отдельные компоненты.
+
+Создайте директорию `demo/src/demo1` и скопируйте туда файл `demo/src/demo0/DemoCounter.vue`.
+
+На примере счётчика рассмотрим, как применяются `emit` и `props`. Нам потребуется создать два вспомогательных компонента в директории `demo/src/demo1`: `CounterButton.vue` и `CounterValue.vue` — они реализуют логику изменения и отображения значения.
+
+# Шаг 2. CounterButton
+
+Реализуем компонент `CounterButton.vue` — кнопку, которая по клику отправляет событие `"action"`.
+
+> Стили, применимые только к кнопке, мы перенесём внутрь этого компонента.
+
+```html
+<template>
+  <button class="counter-button" @click="$emit('action')">
+    <slot />
+  </button>
+</template>
+
+<script setup>
+defineEmits(['action']);
+</script>
+
+<style lang="scss" scoped>
+.counter-button {
+  margin: 0 10px;
+  font-size: 1.5rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: none;
+  background: #dd0000;
+  color: white;
+  cursor: pointer;
+  &:hover {
+    background: #ff0000;
+  }
+}
+</style>
+```
+
+После создания компонента заменим HTML-кнопки в `DemoCounter.vue` на наш новый компонент. Стили, которые раньше использовались кнопкой, теперь можно удалить.
+
+```html
+<template>
+  <demo-container>
+    <div class="counter">
+      <counter-button @action="decrement">-</counter-button>
+
+      <span>Current value: {{ count }}</span>
+
+      <counter-button @action="increment">+</counter-button>
+    </div>
+  </demo-container>
+</template>
+
+<script setup>
+import CounterButton from "./CounterButton.vue";
+//  Код без изменений
+</script>
+
+<style lang="scss" scoped>
+.counter {
+  display: flex;
+  align-items: center;
+}
+</style>
+```
+
+# Шаг 3. CounterValue
+
+Компонент `CounterValue.vue` отвечает за отображение значения, полученного через `props`:
+
+```html
+<template>
+  <span>Current value: {{ value }}</span>
+</template>
+
+<script setup>
+defineProps({
+  value: {
+    type: Number,
+    required: true,
+  }
+});
+</script>
+```
+
+Подключим его в `DemoCounter.vue` и разместим на нужном месте:
+
+```html
+<template>
+  <demo-container>
+    <div class="counter">
+      <counter-button @action="decrement">-</counter-button>
+
+      <counter-value :value="count" />
+
+      <counter-button @action="increment">+</counter-button>
+    </div>
+  </demo-container>
+</template>
+
+<script setup>
+import CounterValue from "./CounterValue.vue";
+/* Код без изменений  */
+</script>
+
+<!-- Стили без изменений  -->
+```

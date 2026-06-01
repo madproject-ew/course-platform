@@ -1,0 +1,178 @@
+---
+title: "Состояние хранилища"
+type: article
+quiz:
+  - question: "Для чего используется метод $patch в Pinia?"
+    type: single
+    options:
+      - "Для создания нового хранилища"
+      - "Для одновременного обновления нескольких полей состояния"
+      - "Для подписки на изменения состояния"
+      - "Для сброса хранилища в начальное состояние"
+    answer: 1
+  - question: "В чём преимущество $subscribe() перед watch() при отслеживании изменений хранилища?"
+    type: single
+    options:
+      - "$subscribe() работает асинхронно"
+      - "$subscribe() срабатывает только один раз после всех изменений в рамках одной операции"
+      - "$subscribe() поддерживает глубокое наблюдение"
+      - "$subscribe() автоматически отписывается при размонтировании компонента"
+    answer: 1
+  - question: "Какие утверждения о состоянии хранилища Pinia верны?"
+    type: multiple
+    options:
+      - "Данные хранилища можно менять напрямую через присваивание"
+      - "Метод $reset возвращает хранилище к исходным значениям"
+      - "mapWritableState позволяет только читать данные хранилища"
+      - "state определяется через функцию для корректной работы на клиенте и сервере"
+      - "mapState создаёт двустороннюю привязку данных"
+    answers: [0, 1, 3]
+---
+
+# Состояние хранилища
+
+Состояние (State) — центральная часть хранилища, в которой непосредственно содержатся данные приложения.
+
+Pinia предоставляет функцию `defineStore`, принимающую два параметра: имя хранилища и объект его настроек. Определение состояния через функцию позволяет Pinia одинаково корректно работать как на клиенте, так и на сервере.
+
+Пример объявления хранилища с начальным состоянием:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useStore = defineStore('profile', {
+  state: () => {
+    return {
+      name: 'Иван Петров',
+      age: 32,
+    }
+  },
+})
+```
+
+## Доступ к данным из хранилища
+
+Для получения данных достаточно импортировать хранилище и вызвать его:
+
+```javascript
+import { useStore } from './stores/profile'
+
+const store = useStore()
+```
+
+Все данные доступны через переменную `store`:
+
+```javascript
+store.name // Иван Петров
+store.age // 32
+```
+
+## Изменение данных
+
+Данные хранилища мутабельны — их можно менять напрямую:
+
+```javascript
+store.name = 'Петр Иванов'
+store.name // Петр Иванов
+store.age = 25
+store.age // 25
+```
+
+Для одновременного обновления нескольких полей удобно использовать метод `$patch`:
+
+```javascript
+store.$patch(state => {
+  state.name = 'Петр Иванов'
+  state.age = 25
+})
+```
+
+## Сброс данных хранилища в первоначальное состояние
+
+Вернуть хранилище к исходным значениям можно с помощью метода `$reset`:
+
+```javascript
+ import { useStore } from './stores/profile'
+
+ const store = useStore()
+ store.$reset()
+```
+
+## Использование методов mapState и mapWritableState
+
+> **Примечание:** Хелперы `mapState` и `mapWritableState` используются только в Options API. При работе с Composition API (`<script setup>`) обращайтесь к хранилищу напрямую через вызов `useStore()`.
+
+В Options API метод `mapState` позволяет получить доступ к данным хранилища через вычисляемые свойства:
+
+```xml
+<template>
+  {{ userName }}
+  {{ age }}
+</template>
+
+<script>
+import { mapState } from 'pinia'
+import { useStore } from './stores/profile'
+
+export default {
+  computed: {
+    // даёт доступ к свойствам компонента
+    ...mapState(useStore, ['name', 'age']),
+    userName() {
+      return this.name
+    }
+  },
+}
+</script>
+```
+
+Когда нужно не только читать, но и изменять свойства хранилища, используется функция `mapWritableState`:
+
+```xml
+<template>
+  {{ userName }}
+  {{ age }}
+</template>
+
+<script>
+import { mapWritableState } from 'pinia'
+import { useStore } from './stores/profile'
+
+export default {
+  computed: {
+    // дает доступ к свойствам компонента
+    ...mapWritableState(useStore, ['name', 'age']),
+    userName() {
+      return this.name
+    }
+  },
+  mounted() {
+    this.name = 'Петр Иванов'
+  },
+}
+</script>
+```
+
+## Подписка на отслеживание изменений в хранилище
+
+Метод `$subscribe` позволяет отслеживать изменения состояния. Он принимает колбэк с двумя параметрами:
+
+*   mutation — информация о произошедшем изменении;
+*   state — текущее состояние хранилища.
+
+```javascript
+import { useStore } from './stores/profile'
+
+const store = useStore()
+store.$subscribe((mutation, state) => {
+  // тип мутации
+  mutation.type // 'direct' | 'patch object' | 'patch function'
+  // идентификатор хранилища
+  mutation.storeId // 'profile'
+  // доступна, если mutation.type === 'patch object'
+  // содержит данные, передаваемые в хранилище при изменении
+  mutation.payload
+})
+```
+
+Главное преимущество `$subscribe()` перед `watch()` состоит в том, что подписка срабатывает только один раз после всех изменений в рамках одной операции.

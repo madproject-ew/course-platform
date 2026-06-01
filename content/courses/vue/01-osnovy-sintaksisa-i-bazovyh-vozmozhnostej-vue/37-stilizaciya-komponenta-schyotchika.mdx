@@ -1,0 +1,119 @@
+---
+title: "Стилизация компонента счётчика"
+type: demo
+---
+
+# Шаг 1. Стилизация компонента счётчика
+
+Продолжаем работать с компонентом `DemoCounter.vue`. На этом этапе нужно оформить его стилями.
+
+Начнём с определения класса `counter`, который будет присвоен блоку-контейнеру.
+
+```html
+<template>
+    <div class="counter">
+        <button> - </button>
+
+        <span> Current value: 0 </span>
+
+        <button> + </button>
+    </div>
+</template>
+```
+
+Далее опишем CSS-правила для этого класса и поместим их в блок `<style>` компонента.
+
+```html
+<style scoped>
+.counter {
+  display: flex;
+  align-items: center;
+}
+</style>
+```
+
+Наконец, добавим стили для кнопок внутри блока `.counter`. Воспользуемся синтаксисом SCSS, указав это в атрибуте `lang` тега `<style>`.
+
+```html
+<style lang="scss" scoped>
+```
+
+```html
+<style lang="scss" scoped>
+.counter {
+  display: flex;
+  align-items: center;
+
+  button {
+    margin: 0 10px;
+    font-size: 1.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: none;
+    background: #dd0000;
+    color: white;
+    cursor: pointer;
+
+    &:hover {
+      background: #ff0000;
+    }
+  }
+}
+</style>
+```
+
+# Шаг 2. Вид компонента счётчика со стилями
+
+На данный момент компонент счётчика должен иметь следующий вид:
+
+```html
+<template>
+    <div class="counter">
+        <button @click="decrement"> - </button>
+
+        <span> Current value: {{ count }} </span>
+
+        <button @click="increment"> + </button>
+    </div>
+</template>
+
+<script setup>
+  import { ref } from 'vue'
+
+  const count = ref(0)
+
+  const decrement = () => {
+    count.value = count.value - 1
+  }
+
+  const increment = () => {
+    count.value = count.value + 1
+  }
+</script>
+
+<style lang="scss" scoped>
+.counter {
+  display: flex;
+  align-items: center;
+
+  button {
+    margin: 0 10px;
+    font-size: 1.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: none;
+    background: #dd0000;
+    color: white;
+    cursor: pointer;
+
+    &:hover {
+      background: #ff0000;
+    }
+  }
+}
+</style>
+```
+
+Запустите проект командой `npm run dev` в директории `demo` и проверьте результат.

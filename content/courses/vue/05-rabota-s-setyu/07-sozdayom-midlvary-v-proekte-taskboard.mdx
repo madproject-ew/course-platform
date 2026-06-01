@@ -1,0 +1,111 @@
+---
+title: "Создаём мидлвары в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание обработчика мидлваров
+
+**Мидлвар** (middleware) в контексте нашего курса -- это функция, которая выполняется перед переходом на определённую страницу. Иначе их называют навигационными хуками (navigation guards).
+
+Мидлвары нужны для защиты маршрутов. Например, мы не хотим позволять неавторизованным пользователям назначать себе задачи, а пользователям без статуса администратора -- создавать или редактировать задачи.
+
+Создадим директорию `src/middlewares` и файл `middlewarePipeline.js`:
+
+```javascript
+export default (router) => {
+	router.beforeEach(async (to, from) => {
+		// Находим мидлвары в свойстве meta.middlewares маршрута, на который происходит доступ
+		const middlewares = to.meta.middlewares
+		// Если у маршрута нет мидлваров, переходим на страницу
+		if (!middlewares) {
+			return true
+		}
+		// Делаем перебор мидлваров
+		for (const middleware of middlewares) {
+			const result = await middleware({ to, from })
+			// Если мидлвар возвращает объект или строку маршрута, прерываем цепочку и возвращаем результат
+			if (
+				typeof result === 'object' ||
+				typeof result === 'string' ||
+				result === false
+			) {
+				return result
+			}
+		}
+		return true
+	})
+}
+```
+
+# Шаг 2. Добавление мидлвара isAdmin
+
+Создадим мидлвар isAdmin, который будет защищать маршруты создания и редактирования задач от пользователей без прав администратора.
+
+Создайте файл `src/middlewares/isAdmin.js`:
+
+```javascript
+import { useAuthStore } from '@/stores'
+
+export default function isAdmin () {
+	const authStore = useAuthStore()
+	if (!authStore.user?.isAdmin) {
+		return { path: '/' };
+	}
+	return true;
+}
+```
+
+# Шаг 3. Добавление мидлваров в маршрутизатор
+
+Создадим единую точку доступа к мидлварам. Добавьте файл `src/middlewares/index.js` с экспортами:
+
+```javascript
+export { default as isAdmin } from './isAdmin'
+export { default as middlewarePipeline } from './middlewarePipeline'
+```
+
+Подключим обработчик мидлваров к маршрутизатору в файле `src/router/index.js`:
+
+```javascript
+import { createRouter, createWebHistory } from "vue-router";
+import routes from './routes'
+import { middlewarePipeline } from '@/middlewares'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
+});
+
+middlewarePipeline(router);
+
+export default router;
+```
+
+Добавим мидлвар в маршруты `TaskCreate` и `TaskEdit` в файле `src/router/routes.js`:
+
+```javascript
+import { isAdmin } from '@/middlewares'
+
+// ...
+
+{
+    path: '/tasks/create',
+    name: 'TaskCreate',
+    component: () => import('../views/TaskCreate.vue'),
+    meta: {
+        layout: 'AppLayoutMain',
+        middlewares: [isAdmin],
+    }
+},
+{
+    path: '/tasks/edit/:id',
+    name: 'TaskEdit',
+    component: () => import('../views/TaskEdit.vue'),
+    meta: {
+        layout: 'AppLayoutMain',
+        middlewares: [isAdmin],
+    }
+}
+```
+
+Убедитесь, что пользователь без статуса admin не имеет доступа к маршрутам создания и редактирования задач.

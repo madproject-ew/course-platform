@@ -1,0 +1,79 @@
+---
+title: "Создание экземпляра приложения"
+type: article
+quiz:
+  - question: "Какая функция используется для создания экземпляра приложения Vue?"
+    type: single
+    options:
+      - "new Vue()"
+      - "Vue.init()"
+      - "createApp()"
+      - "mountApp()"
+    answer: 2
+  - question: "Что делает метод mount('#app') при создании приложения Vue?"
+    type: single
+    options:
+      - "Создаёт новый DOM-элемент с id='app'"
+      - "Связывает DOM-элемент с Vue-приложением для рендеринга"
+      - "Загружает компоненты приложения с сервера"
+      - "Инициализирует маршрутизатор для элемента app"
+    answer: 1
+---
+
+# Создание экземпляра приложения
+
+Любое приложение Vue начинается с создания нового экземпляра приложения при помощи функции `createApp`:
+
+```javascript
+import { createApp } from 'vue'
+
+const app = createApp({
+  /* параметры */
+})
+```
+
+1.  Импортируем Vue.js.
+2.  Создаём экземпляр приложения — далее будем называть его просто «приложением».
+
+## Корневой компонент
+
+Для работы приложения необходим корневой компонент — тот, с которого начинается иерархия вложенных компонентов. Допустим, он находится в `src/App.vue`. Для начала импортируем его из `@/App.vue`.
+
+```javascript
+import App from '@/App.vue'
+```
+
+Чтобы приложение строило дерево компонентов именно от корневого, нужно передать его в качестве аргумента функции `createApp`.
+
+```javascript
+const app = createApp(App)
+```
+
+Далее необходимо связать DOM-элемент с Vue-приложением. Для этого вызываем метод `mount` и передаём ему селектор нужного элемента. К примеру, чтобы «примонтировать» приложение к `<div id="app"></div>`, нужно передать строку `#app`:
+
+```javascript
+import { createApp } from 'vue'
+import App from '@/App'
+
+const app = createApp(App)
+app.mount('#app')
+
+```
+
+Скрипт `main.js` должен быть подключён к файлу `index.html`, расположенному в корне проекта.
+
+```xml
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Мой проект</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+```

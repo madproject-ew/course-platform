@@ -1,0 +1,108 @@
+---
+title: "Тест по разделу"
+type: article
+quiz:
+  - question: "Какой модификатор события используется для предотвращения стандартного поведения элемента?"
+    type: single
+    options:
+      - ".stop"
+      - ".prevent"
+      - ".capture"
+      - ".once"
+    answer: 1
+  - question: "Как передать дополнительные аргументы вместе с объектом события в обработчик?"
+    type: single
+    options:
+      - "@click=\"onClick(type)\""
+      - "@click=\"onClick($event, type)\""
+      - "@click=\"onClick\" :args=\"type\""
+      - "@click.args=\"onClick(type)\""
+    answer: 1
+  - question: "Какие утверждения о модификаторах событий верны?"
+    type: multiple
+    options:
+      - "Модификаторы можно комбинировать: @click.stop.prevent"
+      - "Модификатор .once вызывает обработчик только один раз"
+      - "Модификатор .passive совместим с .prevent"
+      - "Модификатор .exact задаёт точную комбинацию системных клавиш"
+      - "Модификаторы можно использовать без обработчика: @submit.prevent"
+    answers: [0, 1, 3, 4]
+  - question: "Каким механизмом данные передаются от родительского компонента к дочернему?"
+    type: single
+    options:
+      - "Через emit"
+      - "Через props"
+      - "Через Event Bus"
+      - "Через глобальное хранилище"
+    answer: 1
+  - question: "Какая функция используется для создания пользовательских событий в Composition API?"
+    type: single
+    options:
+      - "defineProps"
+      - "defineEmits"
+      - "createEvent"
+      - "useEmitter"
+    answer: 1
+  - question: "Какие параметры можно указать при объявлении props?"
+    type: multiple
+    options:
+      - "type — тип данных"
+      - "required — обязательность"
+      - "default — значение по умолчанию"
+      - "validator — функция валидации"
+      - "reactive — включение реактивности"
+    answers: [0, 1, 2, 3]
+  - question: "Что произойдёт, если в компонент со слотом не передано дочернего контента?"
+    type: single
+    options:
+      - "Компонент не отрисуется"
+      - "Vue выдаст ошибку в консоли"
+      - "Отобразится контент по умолчанию, указанный внутри тега slot"
+      - "Слот будет заменён пустым div"
+    answer: 2
+  - question: "Какая запись используется для размещения контента в именованном слоте?"
+    type: single
+    options:
+      - "<div slot=\"header\">..."
+      - "<template v-slot:header>..."
+      - "<slot-content name=\"header\">..."
+      - "<template v-bind:slot=\"header\">..."
+    answer: 1
+  - question: "Для чего используются scoped slots?"
+    type: single
+    options:
+      - "Для ограничения области видимости CSS-стилей слота"
+      - "Для передачи данных из дочернего компонента в контент родительского через слот"
+      - "Для создания слотов, доступных только в определённых маршрутах"
+      - "Для отложенной загрузки контента слота"
+    answer: 1
+  - question: "Чему эквивалентна запись <custom-component v-model=\"value\" />?"
+    type: single
+    options:
+      - "<custom-component :value=\"value\" @input=\"value = $event\" />"
+      - "<custom-component :modelValue=\"value\" @update:model-value=\"value = $event\" />"
+      - "<custom-component :data=\"value\" @change=\"value = $event\" />"
+      - "<custom-component v-bind=\"value\" v-on=\"value\" />"
+    answer: 1
+  - question: "Что необходимо сделать в дочернем компоненте для поддержки v-model?"
+    type: multiple
+    options:
+      - "Объявить prop с именем modelValue"
+      - "Создать emit с именем update:modelValue"
+      - "Использовать директиву v-model внутри компонента"
+      - "Объявить prop с именем value"
+      - "Привязать modelValue к элементу ввода"
+    answers: [0, 1, 4]
+  - question: "Как реализовать двустороннее связывание через computed в дочернем компоненте?"
+    type: single
+    options:
+      - "Создать computed с функцией, возвращающей modelValue"
+      - "Создать computed с объектом, содержащим методы get и set"
+      - "Использовать watch вместо computed"
+      - "Передать computed-свойство как prop"
+    answer: 1
+---
+
+# Тест по разделу
+
+Ответьте на вопросы, чтобы проверить усвоение материала.

@@ -1,0 +1,135 @@
+---
+title: "Добавление анимаций в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Анимация перемещения задач в бэклоге
+
+Чтобы не перегружать проект лишними эффектами, ограничимся несколькими точечными анимациями.
+
+Добавим эффект плавного исчезновения задачи при её перемещении. Задачи отображаются в двух местах: в бэклоге и на доске. Начнём с бэклога. В компоненте `AppLayoutSidebar.vue` обернём список задач в `transition-group`:
+
+```html
+
+<template>
+    <!--    ...-->
+    <!--  Задачи в бэклоге-->
+    <transition-group name="tasks">
+        <div
+                v-for="task in tasksStore.sidebarTasks"
+                :key="task.id"
+        >
+            <task-card
+                    :task="task"
+                    class="backlog__task"
+                    @drop="moveTask($event, task)"
+            />
+        </div>
+    </transition-group>
+    <!--    ...-->
+</template>
+```
+
+Анимация названа `tasks`. Теперь добавим для неё стили в блоке `style`:
+
+```html
+
+<style lang="scss" scoped>
+
+    /*...*/
+    .tasks-enter-active,
+    .tasks-leave-active {
+        transition: all $animationSpeed ease;
+    }
+
+    .tasks-enter-from,
+    .tasks-leave-to {
+        transform: scale(1.1);
+
+        opacity: 0;
+    }
+</style>
+```
+
+# Шаг 2. Анимация перемещения задач на доске
+
+Применим аналогичный подход в компоненте `DeskColumn.vue`:
+
+```html
+
+<template>
+    <!--    ...-->
+    <!--      Вынесли задачи в отдельный компонент-->
+    <transition-group name="tasks">
+        <div
+                v-for="task in columnTasks"
+                :key="task.id"
+        >
+            <task-card
+                    :task="task"
+                    class="column__task"
+                    @drop="moveTask($event, task)"
+            />
+        </div>
+    </transition-group>
+</template>
+
+<!--...-->
+
+<style lang="scss" scoped>
+
+    /*...*/
+    .tasks-enter-active,
+    .tasks-leave-active {
+        transition: all $animationSpeed ease;
+    }
+
+    .tasks-enter-from,
+    .tasks-leave-to {
+        transform: scale(1.1);
+
+        opacity: 0;
+    }
+</style>
+```
+
+# Шаг 3. Анимация изменения тегов
+
+В качестве ещё одного примера добавим анимацию обновления строки тегов в компоненте `TaskCardCreatorTags.vue`:
+
+```html
+<template>
+  <div class="task-card__tags">
+    <div class="task-card__tags--text">
+      Добавьте теги, разделённые символом #
+    </div>
+    <transition name="replace">
+      <task-card-creator-tags-analyzer
+          v-if="showAnalyzer"
+          class="task-card__tags-analyzer"
+          :tags="tags"
+          @setTags="setTags"
+      />
+    </transition>
+  </div>
+</template>
+```
+
+Кроме того, необходимо увеличить задержку перед повторным показом анализатора тегов в методе `setTags`:
+
+```javascript
+function setTags (tags, refresh) {
+  if (refresh) {
+    // При обновлении тегов очищаем текущую строку
+    showAnalyzer.value = false
+    emits('setTags', tags)
+    // Обновляем анализатор за минимальное время
+    timeout.value = setTimeout(() => {
+      showAnalyzer.value = true
+      clearTimeout(timeout.value)
+    }, 500)
+  } else {
+    emits('setTags', tags)
+  }
+}
+```

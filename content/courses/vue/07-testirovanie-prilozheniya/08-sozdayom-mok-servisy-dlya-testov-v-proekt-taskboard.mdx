@@ -1,0 +1,94 @@
+---
+title: "Создаём мок-сервисы для тестов в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создаём файл для мок-сервисов
+
+В этой демонстрации мы приступаем к тестированию проекта TaskBoard. Для хранения тестовых файлов существуют два распространённых подхода:
+
+*   создание директории `__tests__` внутри каждого модуля, где находятся тестируемые файлы;
+*   единая директория `tests` в корне проекта для всех тестов.
+
+Мы продемонстрируем оба варианта: первый — в проекте TaskBoard, второй — во OnlinePizza.
+
+При тестировании не следует обращаться к реальному серверу и получать данные из БД — вместо этого мы создадим эмуляцию. Vitest предоставляет для этого все необходимые инструменты.
+
+Начнём с мок-данных, имитирующих ответы сервера: колонки, задачи и пользователи. Создайте директорию `src/stores/__tests__` и добавьте файл `mockServices.js` со следующим содержимым:
+
+```javascript
+import columnsJSON from '../../mocks/columns.json'
+import tasksJSON from '../../mocks/tasks.json'
+import usersJSON from '../../mocks/users.json'
+import { vi } from 'vitest'
+
+vi.mock('@/services', () => {
+	return {}
+})
+```
+
+Функция `vi.mock` перехватывает все импорты указанного модуля. Вызов `vi.mock` автоматически поднимается в начало файла (hoisting) и выполняется до всех остальных импортов. В данном случае мы эмулируем модуль `src/services`.
+
+# Шаг 2. Создаём эмуляцию columnsService
+
+Добавим мок для сервиса колонок:
+
+```javascript
+import columnsJSON from '../../mocks/columns.json'
+import tasksJSON from '../../mocks/tasks.json'
+import usersJSON from '../../mocks/users.json'
+import { vi } from 'vitest'
+
+vi.mock('@/services', () => {
+	return {
+		columnsService: {
+			// В версии Node.js 17+ можно использовать structuredClone для глубокого клонирования
+			fetchColumns: vi.fn(async () => {
+				return await JSON.parse(JSON.stringify(columnsJSON))
+			}),
+			createColumn: vi.fn(async () => ({ id: 6 })),
+			updateColumns: vi.fn(),
+			deleteColumns: vi.fn()
+		}
+	}
+})
+```
+
+Здесь используется `vi.fn` — функция для создания мока. В качестве аргумента передаётся колбэк, который будет вызван при обращении к замоканной функции. Если аргумент не указан, вызов вернёт `undefined`.
+
+При эмуляции сервиса колонок мы замещаем все реальные методы: fetchColumns, createColumns, updateColumns и deleteColumns.
+
+# Шаг 3. Добавляем эмуляцию сервисов задач и пользователей
+
+Дополним мок сервисами задач и пользователей:
+
+```javascript
+import columnsJSON from '../../mocks/columns.json'
+import tasksJSON from '../../mocks/tasks.json'
+import usersJSON from '../../mocks/users.json'
+import { vi } from 'vitest'
+
+vi.mock('@/services', () => {
+	return {
+		columnsService: {
+			// В версии Node.js 17+ можно использовать structuredClone для глубокого клонирования
+			fetchColumns: vi.fn(async () => {
+				return await JSON.parse(JSON.stringify(columnsJSON))
+			}),
+			createColumn: vi.fn(async () => ({ id: 6 })),
+			updateColumns: vi.fn(),
+			deleteColumns: vi.fn()
+		},
+		tasksService: {
+			fetchTasks: vi.fn(async () => JSON.parse(JSON.stringify(tasksJSON)))
+		},
+		userService: {
+			fetchUsers: vi.fn(async () => {
+				return await JSON.parse(JSON.stringify(usersJSON))
+			})
+		}
+	}
+})
+```
+
+Для сервисов задач и пользователей добавлены только методы `fetch`, поскольку остальные для целей тестирования не потребуются.

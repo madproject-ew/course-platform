@@ -1,0 +1,1004 @@
+---
+title: "Аутентификация в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание хранилища auth
+
+Для хранения информации о текущем пользователе в системе нам необходимо отдельное хранилище.
+
+Создайте файл `src/stores/auth.js`:
+
+```javascript
+import { defineStore } from 'pinia'
+import { authService } from '../services'
+import { setToken, removeToken } from '@/services/token-manager'
+
+export const useAuthStore = defineStore('auth', {
+	state: () => ({
+		user: null
+	}),
+	getters: {},
+	actions: {},
+})
+```
+
+Здесь определено единственное свойство: `user` -- объект с информацией о пользователе.
+
+Добавим геттеры:
+
+```javascript
+import { defineStore } from 'pinia'
+import { authService } from '../services'
+import { setToken, removeToken } from '@/services/token-manager'
+
+export const useAuthStore = defineStore('auth', {
+	state: () => ({
+		user: null
+	}),
+	getters: {
+		isAuthenticated: state => !!state.user,
+		getUserAttribute: state => attr => state.user ? state.user[attr] : ''
+	},
+	actions: {},
+})
+```
+
+И действия (actions):
+
+```javascript
+import { defineStore } from 'pinia'
+import { authService } from '../services'
+import { setToken, removeToken } from '@/services/token-manager'
+
+export const useAuthStore = defineStore('auth', {
+	state: () => ({
+		user: null
+	}),
+	getters: {
+		isAuthenticated: state => !!state.user,
+		getUserAttribute: state => attr => state.user ? state.user[attr] : ''
+	},
+	actions: {
+		async login (email, password) {
+			try {
+				const data = await authService.login(email, password)
+				setToken(data.token)
+				return 'ok'
+			} catch (e) {
+				return e.message
+			}
+		},
+		async getMe () {
+			this.user = await authService.whoAmI()
+		},
+		async logout (sendRequest = true) {
+			await authService.logout()
+			this.user = null
+			removeToken()
+		},
+	},
+})
+```
+
+Добавьте экспорт хранилища в `src/stores/index.js`:
+
+```javascript
+//...
+export { useAuthStore } from './auth'
+```
+
+# Шаг 2. Создание компонента AppInput
+
+Для страницы входа нам понадобится компонент AppInput -- это стилизованное текстовое поле с возможностью отображения ошибок валидации.
+
+Создайте файл `src/common/components/AppInput.vue`:
+
+```html
+<template>
+  <div class="text-field">
+    <input
+        :value="modelValue"
+        :type="type"
+        :name="name"
+        class="text-field__input"
+        :class="{'text-field__input--error': showError}"
+        :placeholder="placeholder"
+        :required="required"
+        @input="emit('update:modelValue', $event.target.value)"
+    />
+    <span
+        v-if="showError"
+        class="text-field__text"
+    >
+      {{ errorText }}
+    </span>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: null
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  type: {
+    type: String,
+    default: 'text'
+  },
+  placeholder: {
+    type: String,
+    default: ''
+  },
+  errorText: {
+    type: String,
+    default: ''
+  },
+  required: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+const input = computed({
+  get () {
+    return props.modelValue
+  },
+  set (value) {
+    emit('update:modelValue', value)
+  }
+})
+
+const showError = computed(() => {
+  return !!props.errorText
+})
+</script>
+
+<style lang="scss" scoped>
+@import "@/assets/scss/app.scss";
+
+.text-field {
+  position: relative;
+
+  &__input {
+    display: block;
+
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 12px 16px;
+
+    color: $gray-900;
+    border: 1px solid $white-800;
+    border-radius: 6px;
+
+    &--error {
+      border-color: $red-600;
+    }
+
+    &:focus {
+      border-color: $blue-600;
+    }
+  }
+
+  &__text {
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+
+    color: $red-600;
+
+    @include r-s10-h12;
+  }
+}
+</style>
+```
+
+# Шаг 3. Работа над формой входа: разметка шаблона
+
+Для корректной авторизации пользователей в приложении создадим форму входа.
+
+Создайте файл `src/views/AppLogin.vue`.
+
+Базовая разметка шаблона:
+
+```html
+<template>
+  <div class="sign-form sign-in">
+<!--    Шапка формы входа-->
+
+<!--    Форма входа-->
+    <form
+        class="sign-form__shape"
+    >
+<!--      Поле электронной почты-->
+
+<!--      Поле пароля-->
+
+<!--      Кнопка отправки формы-->
+
+<!--       Поле ошибок сервера-->
+    </form>
+  </div>
+</template>
+```
+
+# Шаг 4. Работа над формой входа: шапка формы
+
+Добавим верхнюю часть формы с логотипом и кнопкой закрытия:
+
+```html
+<template>
+  <div class="sign-form sign-in">
+<!--    Шапка формы входа-->
+    <div class="sign-form__header">
+      <router-link
+          to="/"
+          class="logo"
+      >
+        <img
+            src="@/assets/img/logo.svg"
+            alt="TaskBoard logo"
+            width="147"
+            height="23"
+        />
+      </router-link>
+
+      <button
+          class="sign-form__close"
+          type="button"
+          @click="$router.push('/')"
+      />
+    </div>
+
+    <h3 class="sign-form__title">
+      Войти
+    </h3>
+<!--    Форма входа-->
+    <form
+        class="sign-form__shape"
+    >
+<!--      Поле электронной почты-->
+
+<!--      Поле пароля-->
+
+<!--      Кнопка отправки формы-->
+
+<!--       Поле ошибок сервера-->
+    </form>
+  </div>
+</template>
+```
+
+# Шаг 5. Работа над формой входа: поля ввода
+
+Добавим поля для ввода email и пароля, а также логику их обработки:
+
+```html
+<template>
+  <div class="sign-form sign-in">
+<!--    Шапка формы входа-->
+    <div class="sign-form__header">
+      <router-link
+          to="/"
+          class="logo"
+      >
+        <img
+            src="@/assets/img/logo.svg"
+            alt="TaskBoard logo"
+            width="147"
+            height="23"
+        />
+      </router-link>
+
+      <button
+          class="sign-form__close"
+          type="button"
+          @click="router.push('/')"
+      />
+    </div>
+
+    <h3 class="sign-form__title">
+      Войти
+    </h3>
+<!--    Форма входа-->
+    <form
+        class="sign-form__shape"
+    >
+<!--      Поле электронной почты-->
+      <label class="sign-form__input">
+        <app-input
+            v-model="email"
+            type="email"
+            name="email"
+            class="input"
+            placeholder="E-mail"
+            :error-text="validations.email.error"
+        />
+      </label>
+<!--      Поле пароля-->
+      <label class="sign-form__input">
+        <app-input
+            v-model="password"
+            type="password"
+            name="password"
+            class="input"
+            placeholder="Пароль"
+            :error-text="validations.password.error"
+        />
+      </label>
+<!--      Кнопка отправки формы-->
+
+<!--       Поле ошибок сервера-->
+    </form>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch } from 'vue'
+import AppInput from '@/common/components/AppInput.vue'
+import { validateFields, clearValidationErrors } from '@/common/validator'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const setEmptyValidations = () => ({
+  email: {
+    error: '',
+    rules: ['required', 'email']
+  },
+  password: {
+    error: '',
+    rules: ['required']
+  }
+})
+
+const email = ref('')
+const password = ref('')
+const validations = ref(setEmptyValidations())
+
+watch(email, () => {
+  // Очищаем поля ошибок при вводе новых данных
+  if (validations.value.email.error) clearValidationErrors(validations.value)
+})
+
+watch(password, () => {
+  // Очищаем поля ошибок при вводе новых данных
+  if (validations.value.password.error) clearValidationErrors(validations.value)
+})
+</script>
+```
+
+# Шаг 6. Работа над формой входа: отправка запроса и обработка ошибок сервера
+
+Добавим кнопку отправки, а также обработку и отображение серверных ошибок:
+
+```html
+<template>
+  <div class="sign-form sign-in">
+<!--    Шапка формы входа-->
+    <div class="sign-form__header">
+      <router-link
+          to="/"
+          class="logo"
+      >
+        <img
+            src="@/assets/img/logo.svg"
+            alt="TaskBoard logo"
+            width="147"
+            height="23"
+        />
+      </router-link>
+
+      <button
+          class="sign-form__close"
+          type="button"
+          @click="router.push('/')"
+      />
+    </div>
+
+    <h3 class="sign-form__title">
+      Войти
+    </h3>
+<!--    Форма входа-->
+    <form
+        class="sign-form__shape"
+        @submit.prevent="login"
+    >
+<!--      Поле электронной почты-->
+      <label class="sign-form__input">
+        <app-input
+            v-model="email"
+            type="email"
+            name="email"
+            class="input"
+            placeholder="E-mail"
+            :error-text="validations.email.error"
+        />
+      </label>
+<!--      Поле пароля-->
+      <label class="sign-form__input">
+        <app-input
+            v-model="password"
+            type="password"
+            name="password"
+            class="input"
+            placeholder="Пароль"
+            :error-text="validations.password.error"
+        />
+      </label>
+<!--      Кнопка отправки формы-->
+      <div class="sign-form__wrap">
+        <app-button
+            class="button--primary"
+            type="submit"
+        >
+          Войти
+        </app-button>
+      </div>
+<!--       Поле ошибок сервера-->
+      <div v-if="serverErrorMessage" class="server-error-message">{{ serverErrorMessage }}</div>
+    </form>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch } from 'vue'
+import AppButton from '@/common/components/AppButton.vue'
+import AppInput from '@/common/components/AppInput.vue'
+import { validateFields, clearValidationErrors } from '@/common/validator'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const setEmptyValidations = () => ({
+  email: {
+    error: '',
+    rules: ['required', 'email']
+  },
+  password: {
+    error: '',
+    rules: ['required']
+  }
+})
+
+const email = ref('')
+const password = ref('')
+const validations = ref(setEmptyValidations())
+const serverErrorMessage = ref(null)
+
+watch(email, () => {
+  // Очищаем поля ошибок при вводе новых данных
+  if (serverErrorMessage.value ) serverErrorMessage.value = null
+  if (validations.value.email.error) clearValidationErrors(validations.value)
+})
+
+watch(password, () => {
+  // Очищаем поля ошибок при вводе новых данных
+  if (serverErrorMessage.value ) serverErrorMessage.value = null
+  if (validations.value.password.error) clearValidationErrors(validations.value)
+})
+
+async function login () {
+  if (!validateFields(
+      { email: email.value, password: password.value },
+      validations.value
+  )) {
+    return
+  }
+  const responseMessage = await authStore.login(email.value, password.value)
+  // Проверяем, если возвращается статус не 'ok', то показываем ошибку сервера
+  if (responseMessage !== 'ok') {
+    serverErrorMessage.value = responseMessage
+  } else {
+    // Получаем данные пользователя
+    await authStore.getMe()
+    // Если логин без ошибок, перенаправляем на главную страницу
+    await router.push('/')
+  }
+}
+</script>
+```
+
+# Шаг 7. Работа над формой входа: стили
+
+Добавим стилизацию формы:
+
+```html
+<style lang="scss" scoped>
+@import "@/assets/scss/app.scss";
+
+.sign-form {
+  display: block;
+
+  width: 500px;
+
+  background-color: $white-900;
+  box-shadow: 0 4px 8px $shadow-500;
+
+  @include pf_center-all;
+
+  &__shape {
+    padding-right: 64px;
+    padding-bottom: 64px;
+    padding-left: 64px;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+
+    padding: 25px;
+
+    background-color: $blue-600;
+  }
+
+  &__title {
+    margin: 30px 0;
+
+    text-align: center;
+
+    color: $blue-gray-600;
+
+    @include m-s24-h21;
+  }
+
+  &__input {
+    display: block;
+
+    margin-bottom: 16px;
+  }
+
+  &__checkbox {
+    margin-top: 20px;
+  }
+
+  &__wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-top: 30px;
+  }
+
+  &__link {
+    color: $blue-600;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__close {
+    position: relative;
+
+    width: 20px;
+    height: 20px;
+
+    cursor: pointer;
+
+    border: none;
+    background-color: transparent;
+
+    &::after,
+    &::before {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+
+      width: 100%;
+      height: 1px;
+
+      content: "";
+      transition: background-color $animationSpeed;
+
+      background-color: $white-900;
+    }
+
+    &::after {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    &::before {
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    &:hover {
+      &::before,
+      &::after {
+        opacity: 0.6;
+      }
+    }
+  }
+}
+
+.server-error-message {
+  margin-top: 20px;
+  color: $red-700;
+}
+</style>
+```
+
+# Шаг 8. Добавление маршрута
+
+Добавим маршрут для страницы авторизации в файл `src/router/routes.js`:
+
+```javascript
+export default [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/AppLogin.vue'),
+    meta: {
+      layout: 'AppLayoutDefault',
+    }
+  },
+	{
+		path: '/',
+		name: 'HomeView',
+		component: () => import('../views/HomeView.vue'),
+		meta: { layout: 'AppLayoutMain' },
+		children: [
+
+...
+
+}
+```
+
+# Шаг 9. Изменение шапки главного шаблона AppLayoutHeader
+
+Добавим в шапку кнопку перехода на страницу входа для неавторизованных пользователей, а для авторизованных -- отображение информации о текущем пользователе.
+
+Начиная с этого этапа, изображения аватаров предоставляются сервером. Для их получения добавим вспомогательную функцию в `src/common/helpers.js`:
+
+```javascript
+export const getPublicImage = path => {
+	const publicUrl = '/api'
+	return `${publicUrl}/${path}`
+}
+```
+
+Изменённый файл `AppLayoutHeader.vue`:
+
+```html
+<template>
+  <header class="header">
+
+    <!--    Логотип-->
+    <div class="header__logo">
+      <router-link to="/" class="logo">
+        <img
+            src="@/assets/img/logo.svg"
+            alt="TaskBoard logo"
+            width="147"
+            height="23"
+        />
+      </router-link>
+    </div>
+    <!--    Поиск-->
+    <form action="#" class="header__search">
+      <input
+          type="search"
+          name="search"
+          required
+          placeholder="Поиск"
+          @input="filtersStore.applyFilters({ item: $event.target.value, entity: 'search' })"
+      />
+      <button type="submit">Найти</button>
+    </form>
+    <!--    Кнопка создания новой задачи-->
+    <router-link
+        v-if="authStore.getUserAttribute('isAdmin')"
+        to="/tasks/create"
+        class="header__create-task"
+    >
+      Создать карточку
+    </router-link>
+    <!--    Аватар пользователя-->
+    <a
+        v-if="authStore.user"
+        href="#"
+        class="header__user"
+        @click.stop="toggleUserMenu"
+    >
+      <img
+          :src="userImage"
+          alt="Администратор"
+          width="40"
+          height="40"
+      />
+    </a>
+    <!--    Панель пользователя-->
+    <div
+        v-if="isUserMenuOpened"
+        v-click-outside="toggleUserMenu"
+        class="header__menu"
+    >
+      <div class="user-menu">
+        <img
+            :src="userImage"
+            width="56"
+            height="56"
+            alt="Администратор"
+        />
+        <span>{{ authStore.user.name }}</span>
+        <a href="#" class="user-menu__link" @click="logout">Выйти</a>
+      </div>
+    </div>
+    <a
+        v-if="!authStore.isAuthenticated"
+        class="header__login"
+        @click="$router.push('/login')"
+    >
+      Войти
+    </a>
+  </header>
+</template>
+
+<script setup>
+import { useFiltersStore, useAuthStore } from '@/stores'
+import { ref } from 'vue'
+import { getPublicImage } from '@/common/helpers'
+
+const filtersStore = useFiltersStore()
+const authStore = useAuthStore()
+
+const isUserMenuOpened = ref(false)
+const userImage = getPublicImage(authStore.user?.avatar)
+
+function toggleUserMenu () {
+  isUserMenuOpened.value = !isUserMenuOpened.value
+}
+
+function logout () {
+  authStore.logout()
+  isUserMenuOpened.value = false
+}
+</script>
+
+<style lang="scss" scoped>
+@import "@/assets/scss/ds-system/ds-system";
+
+.header {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  padding: 15px 12px;
+
+  background-color: $blue-600;
+  box-shadow: 0 2px 4px $shadow-400;
+
+  &__logo {
+    margin-right: auto;
+  }
+
+  &__search {
+    position: relative;
+
+    margin-right: 18px;
+
+    input {
+      @include m-s14-h21;
+
+      margin: 0;
+      padding-top: 11px;
+      padding-right: 11px;
+      padding-bottom: 11px;
+      padding-left: 40px;
+
+      color: $white-900;
+      border: 1px solid $white-800;
+      border-radius: 6px;
+      background-color: transparent;
+    }
+
+    button {
+      position: absolute;
+      top: 50%;
+      left: 11px;
+
+      overflow: hidden;
+
+      width: 17px;
+      height: 17px;
+      padding: 0;
+
+      transform: translateY(-50%);
+
+      color: transparent;
+      border: none;
+      outline: none;
+      background-color: transparent;
+      background-image: url("@/assets/img/icon-search.svg");
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+  }
+
+  &__create-task {
+    @include m-s14-h21;
+
+    margin-right: 18px;
+    padding-top: 13px;
+    padding-right: 14px;
+    padding-bottom: 11px;
+    padding-left: 14px;
+
+    transition: background-color 0.3s;
+    text-transform: uppercase;
+
+    color: $black-700;
+    border-radius: 6px;
+    background: $white-800;
+    box-shadow: 0 4px 8px $shadow-500;
+
+    &:hover {
+      background-color: $yellow-300;
+    }
+  }
+
+  &__login {
+    @include m-s14-h21;
+
+    position: relative;
+
+    padding-left: 28px;
+
+    cursor: pointer;
+
+    color: $white-900;
+
+    &::before {
+      position: absolute;
+      top: -3px;
+      left: 0;
+
+      width: 16px;
+      height: 21px;
+
+      content: "";
+
+      background-image: url("@/assets/img/login.svg");
+    }
+  }
+
+  &__user {
+    cursor: pointer;
+
+    img {
+      display: block;
+
+      width: 40px;
+      height: 40px;
+
+      border-radius: 50%;
+    }
+  }
+
+  &__menu {
+    position: absolute;
+    z-index: 10;
+    top: 1px;
+    right: 1px;
+  }
+}
+.user-menu {
+  width: 240px;
+  padding-top: 32px;
+  padding-bottom: 24px;
+
+  text-align: center;
+
+  border-radius: 6px 0 0 6px;
+  background-color: $white-900;
+  box-shadow: 0 4px 8px $shadow-500;
+
+  img {
+    display: block;
+
+    margin: 0 auto;
+  }
+
+  span {
+    display: block;
+
+    margin-top: 16px;
+    padding-bottom: 16px;
+
+    color: $black-900;
+    border-bottom: 1px solid $gray-100;
+
+    @include m-s18-h21;
+  }
+
+  &__link {
+    display: block;
+
+    margin-top: 16px;
+    padding: 5px 0;
+
+    color: $blue-gray-600;
+
+    @include m-s14-h21;
+
+    &:hover {
+      background-color: $gray-100;
+    }
+
+    &:active {
+      color: $gray-900;
+    }
+  }
+}
+</style>
+```
+
+Обратите внимание на обновлённые стили.
+
+# Шаг 10. Блокировка задач для незарегистрированных пользователей
+
+Мы хотим запретить перетаскивание задач пользователям, не прошедшим авторизацию. Для этого изменим условие атрибута `draggable` в компоненте `AppDrag`:
+
+```html
+<template>
+<!--  Блокируем перенос блоков, если пользователь не вошёл в систему-->
+  <div
+    :draggable="authStore.isAuthenticated"
+    @dragstart.self="onDrag"
+    @dragover.prevent
+    @dragenter.prevent
+  >
+    <slot />
+  </div>
+</template>
+
+<script setup>
+import { DATA_TRANSFER_PAYLOAD, MOVE } from '../constants'
+import { useAuthStore } from '@/stores'
+
+const authStore = useAuthStore()
+
+// ...
+</script>
+```
+
+# Шаг 11. Восстановление аутентификации после перезагрузки страницы
+
+Если авторизованный пользователь закроет браузер или обновит страницу, мы хотим сохранить его сессию, чтобы не пришлось входить заново. Именно для этого токен сохраняется в localStorage.
+
+Для восстановления сессии добавьте следующий код в файл `src/main.js`:
+
+```javascript
+import { getToken, removeToken } from '@/services/token-manager'
+import { useAuthStore } from '@/stores'
+
+// ...
+
+app.mount("#app")
+
+// Проверяем, если пользователь уже вошёл в систему
+const token = getToken()
+if (token) {
+	try {
+		const authStore = useAuthStore()
+		await authStore.getMe()
+		await router.push('/')
+	} catch (e) {
+		removeToken()
+		console.log(e)
+	}
+}
+
+```

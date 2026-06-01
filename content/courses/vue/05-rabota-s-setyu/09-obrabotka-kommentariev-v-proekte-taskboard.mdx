@@ -1,0 +1,139 @@
+---
+title: "Обработка комментариев в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание хранилища комментариев
+
+До сих пор комментарии добавлялись напрямую в объект задачи, но теперь мы хотим сохранять их в базу данных.
+
+Реализуем хранилище комментариев, которое будет взаимодействовать с соответствующим сервисом.
+
+Создайте файл `src/stores/comments.js`:
+
+```javascript
+import { defineStore } from 'pinia'
+import { commentsService } from '@/services'
+import { useUsersStore } from '@/stores'
+
+export const useCommentsStore = defineStore('comments', {
+	state: () => ({
+		comments: [],
+	}),
+	getters: {
+		getCommentsByTaskId: state => taskId => {
+			const usersStore = useUsersStore()
+			return state.comments.filter(comment => comment.taskId === taskId).map(comment => ({
+				...comment,
+				user: usersStore.users.find(user => comment.userId === user.id)
+			}))
+		}
+	},
+	actions: {
+		async fetchComments () {
+			this.comments = await commentsService.fetchComments()
+		},
+		async addComment (comment) {
+			const newComment = await commentsService.createComment(comment)
+			this.comments.push(newComment)
+		}
+	},
+})
+```
+
+Добавьте экспорт в `index.js`:
+
+```javascript
+export { useUsersStore } from './users'
+export { useTasksStore } from './tasks'
+export { useColumnsStore } from './columns'
+export { useFiltersStore } from './filters'
+export { useAuthStore } from './auth'
+export { useCommentsStore } from './comments'
+```
+
+Подключите загрузку комментариев в `src/App.vue`:
+
+```javascript
+import { useTasksStore, useColumnsStore, useUsersStore, useCommentsStore } from './stores'
+
+// ...
+const commentsStore = useCommentsStore()
+// ...
+// Загружаем комментарии
+void commentsStore.fetchComments()
+```
+
+# Шаг 2. Изменение компонента комментариев
+
+Теперь отразим эти изменения в компоненте `src/modules/tasks/components/TaskCardViewComments.vue`.
+
+Замените блок `script`:
+
+```html
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { validateFields, clearValidationErrors } from '../../../common/validator'
+import AppTextarea from '@/common/components/AppTextarea.vue'
+import AppButton from '@/common/components/AppButton.vue'
+import { getPublicImage } from '@/common/helpers'
+import { useAuthStore, useCommentsStore } from '@/stores'
+
+const authStore = useAuthStore()
+const commentsStore = useCommentsStore()
+
+const props = defineProps({
+  taskId: {
+    type: Number,
+    required: true
+  },
+})
+
+const emits = defineEmits(['createNewComment'])
+
+const newComment = ref('')
+const validations = ref({
+  newComment: {
+    error: '',
+    rules: ['required']
+  }
+})
+
+const user = authStore.user
+const comments = computed(() => {
+  return commentsStore.getCommentsByTaskId(props.taskId)
+})
+// Отслеживаем значение поля комментария и очищаем ошибку при изменении
+watch(newComment, () => {
+  if (validations.value.newComment.error) {
+    clearValidationErrors(validations.value)
+  }
+})
+
+const submit = async function () {
+  // Проверяем, валидно ли поле комментария
+  if (!validateFields({ newComment }, validations.value)) return
+  // Создаём объект комментария
+  const comment = {
+    text: newComment.value,
+    taskId: props.taskId,
+    userId: user.id,
+  }
+  // Создаём комментарий
+  await commentsStore.addComment(comment)
+  // Очищаем поле комментария
+  newComment.value = ''
+}
+</script>
+```
+
+В шаблоне обновите способ получения аватара пользователя:
+
+```html
+<img
+    :src="getPublicImage(comment.user.avatar)"
+    :alt="comment.user.name"
+    width="30"
+    height="30"
+/>
+```

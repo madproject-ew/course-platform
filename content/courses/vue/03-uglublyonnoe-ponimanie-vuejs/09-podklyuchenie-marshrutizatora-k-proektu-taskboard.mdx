@@ -1,0 +1,60 @@
+---
+title: "Подключение маршрутизатора к проекту TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание файла маршрутов
+
+Маршрутизатор `vue-router` уже подключён в нашем проекте, однако необходимо определить маршруты для приложения. Создайте файл `routes.js` в директории `src/router/`.
+
+# Шаг 2. Добавление корневого маршрута
+
+Добавьте в файл `routes.js` следующий код:
+
+```javascript
+export default [
+	{
+		path: '/',
+		name: 'HomeView',
+		component: () => import('../views/HomeView.vue'),
+		children: []
+	},
+]
+```
+
+Затем подключите маршруты из `routes.js` к маршрутизатору в файле `src/router/index.js`:
+
+```javascript
+import { createRouter, createWebHistory } from "vue-router";
+import routes from './routes'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
+});
+
+export default router;
+```
+
+# Шаг 3. Добавление RouterView в корневой компонент
+
+В компоненте `App.vue` замените `home-view` на `router-view`:
+
+```html
+<template>
+  <app-layout
+      :tasks="filteredTasks"
+      :filters="state.filters"
+      @update-tasks="updateTasks"
+  >
+    <router-view
+        :tasks="filteredTasks"
+        :filters="state.filters"
+        @update-tasks="updateTasks"
+        @apply-filters="applyFilters"
+    />
+  </app-layout>
+</template>
+```
+
+Не забудьте удалить ставший ненужным импорт компонента `HomeView`. Убедитесь, что приложение продолжает работать корректно.

@@ -1,0 +1,70 @@
+---
+title: "Анимация списков"
+type: article
+quiz:
+  - question: "Какие отличия TransitionGroup имеет по сравнению с Transition?"
+    type: multiple
+    options:
+      - "Параметр mode недоступен"
+      - "Необходимо указать тип родительского элемента через свойство tag"
+      - "Каждому элементу обязательно нужен уникальный key"
+      - "CSS-классы применяются ко всей группе целиком"
+      - "TransitionGroup не поддерживает JavaScript-хуки"
+    answers: [0, 1, 2]
+  - question: "Для анимации какого сценария предназначен компонент TransitionGroup?"
+    type: single
+    options:
+      - "Переключение между двумя компонентами"
+      - "Анимация маршрутов при навигации"
+      - "Анимация элементов, отрисовываемых через v-for"
+      - "Анимация одиночного элемента с v-if"
+    answer: 2
+---
+
+# Анимация списков
+
+Для анимации списков во Vue используется компонент `<transition-group>`. Если у вас есть набор элементов, которые отрисовываются через `v-for` и при этом могут динамически добавляться, удаляться или фильтроваться, компонент **TransitionGroup** позволяет анимировать все эти изменения.
+
+Простой пример анимации добавления нового элемента в список:
+
+```xml
+<template>
+  <button @click="add">Add</button>
+  <transition-group name="card" tag="ul">
+    <li class="card" v-for="({ id }) in items" :key="id">Id: {{ id }}</li>
+  </transition-group>
+</template>
+
+<script setup>
+import { reactive } from 'vue'
+
+const items = reactive([
+  { id: 1 },
+  { id: 2 },
+])
+
+function add () {
+  items.push({ id: Math.floor(Math.random() * 10) })
+}
+</script>
+
+<style scoped>
+.card-enter-active,
+.card-leave-active {
+  transition: all 0.5s ease;
+}
+
+.card-enter-from,
+.card-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
+}
+</style>
+```
+
+**TransitionGroup** поддерживает те же свойства, CSS-классы и JavaScript-хуки, что и **Transition**, однако имеет ряд отличий:
+
+*   параметр `mode` недоступен, поскольку элементы списка не являются взаимоисключающими;
+*   через свойство `tag` необходимо указать тип родительского элемента, в который будут обёрнуты элементы списка;
+*   каждому элементу в списке обязательно нужно присвоить уникальный ключ (`key`);
+*   CSS-классы анимации применяются к каждому элементу по отдельности, а не ко всей группе целиком.

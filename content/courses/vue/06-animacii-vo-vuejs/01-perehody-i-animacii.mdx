@@ -1,0 +1,169 @@
+---
+title: "Переходы и анимации"
+type: article
+quiz:
+  - question: "В каких сценариях компонент Transition позволяет добавлять переходы?"
+    type: multiple
+    options:
+      - "Условная отрисовка с помощью v-if или v-show"
+      - "Динамические компоненты"
+      - "Любые элементы внутри v-for"
+      - "Корневые элементы компонента"
+      - "Статические элементы без условий отображения"
+    answers: [0, 1, 3]
+  - question: "Что означает параметр mode='out-in' у компонента Transition?"
+    type: single
+    options:
+      - "Оба элемента анимируются одновременно"
+      - "Сначала появляется новый элемент, потом уходит текущий"
+      - "Сначала завершается переход текущего элемента, потом появляется новый"
+      - "Анимация применяется только при выходе элемента"
+    answer: 2
+  - question: "Как формируются CSS-классы при использовании именованного перехода с name='slide'?"
+    type: single
+    options:
+      - "v-enter-active, v-leave-active"
+      - "slide-enter-active, slide-leave-active"
+      - "transition-slide-enter, transition-slide-leave"
+      - "animate-slide-in, animate-slide-out"
+    answer: 1
+---
+
+# Переходы и анимации
+
+Грамотно подобранные переходы и анимации способны сделать веб-приложение значительно более современным и приятным в использовании. Продуманная анимация решает сразу несколько задач:
+
+*   привлекает внимание пользователя к важным элементам,
+*   акцентирует ключевую информацию,
+*   помогает ориентироваться в интерфейсе,
+*   формирует ощущение качественного и отполированного продукта.
+
+Каждая из этих задач напрямую влияет на UX (пользовательский опыт), а также помогает повысить конверсию и удержание аудитории.
+
+## Как реализовать переходы во Vue.js.
+
+Vue предлагает несколько способов добавления переходов и анимаций:
+
+*   CSS-переходы/стили анимации — мы рассмотрим их в демо «Отскакивающий мяч CSS».
+*   JS-хуки для внесения изменений в DOM — разберём в демо «Отскакивающий мяч JavaScript».
+*   Интеграция сторонних библиотек CSS и JS — рассмотрим в демо «Анимация маршрутов».
+
+Выбор подхода во многом определяется опытом разработчика. Если вы хорошо знакомы с HTML и CSS, удобнее будет работать через стили. Если же вы пришли из React или предпочитаете JavaScript, программное управление DOM может оказаться более привычным вариантом.
+
+Vue.js предоставляет встроенный компонент-обёртку `Transition`, который позволяет добавлять переходы входа и выхода для любого элемента или компонента в следующих сценариях:
+
+*   условная отрисовка с помощью `v-if` или `v-show`,
+*   динамические компоненты,
+*   корневые элементы компонента.
+
+Рассмотрим базовый пример использования переходов:
+
+```xml
+<template>
+  <button @click="open = !open">
+    Показать/скрыть
+  </button>
+  <transition>
+    <p v-if="open">Элемент</p>
+  </transition>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+
+<style scoped>
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
+</style>
+```
+
+В этом примере элемент `p` обёрнут специальным компонентом `Transition`, а в блоке стилей заданы CSS-правила, описывающие поведение перехода. В следующем уроке мы подробнее разберём каждый из специальных CSS-классов, управляющих отрисовкой переходов и анимаций.
+
+Теперь рассмотрим переход с динамическим компонентом:
+
+```xml
+<template>
+  <button @click="isComponentA = !isComponentA">
+    Изменить компонент
+  </button>
+  <transition name="slide" mode="out-in">
+    <component :is="currentComponent"/>
+  </transition>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import ComponentA from './ComponentA.vue'
+import ComponentB from './ComponentB.vue'
+
+const isComponentA = ref(true)
+const currentComponent = computed(() => {
+  return isComponentA.value ? ComponentA : ComponentB
+})
+
+</script>
+
+<style scoped>
+.slide-enter-active {
+  transition: all 0.4s
+}
+.slide-enter-from {
+  opacity: 0;
+  margin-left: 90px;
+}
+.slide-leave-active {
+  transition: all 0.4s;
+  opacity: 0;
+  margin-left: -100px;
+}
+</style>
+```
+
+Здесь применяется именованный переход (named transition). При использовании именованного перехода CSS-классы получают соответствующий префикс вместо стандартного `v`. Таким образом, вместо `v-enter-active` класс будет называться `slide-enter-active`.
+
+Также в этом примере задан параметр `mode`, который определяет порядок смены элементов:
+
+*   `in-out` — сначала появляется новый элемент, после чего уходит текущий.
+*   `out-in` — сначала завершается переход текущего элемента, и только после этого появляется новый.
+
+Поскольку маршруты (`routes`) по сути являются динамическим компонентом, к ним тоже можно применять переходы и анимации:
+
+```xml
+<template>
+  <div id="app">
+    <router-link to="/componentA">componentA | </router-link>
+    <router-link to="/componentB">componentB</router-link>
+
+    <router-view v-slot="{ Component }">
+      <transition name="slide" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
+  </div>
+</template>
+
+<style>
+.slide-enter-active {
+  transition: all 0.4s
+}
+.slide-enter-from {
+  opacity: 0;
+  margin-left: 90px;
+}
+.slide-leave-active {
+  transition: all 0.4s;
+  opacity: 0;
+  margin-left: -100px;
+}
+</style>
+```

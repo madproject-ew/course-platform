@@ -1,0 +1,59 @@
+---
+title: "Создание компонента AppIcon.vue в проекте TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание директории для общих компонентов
+
+Некоторые компоненты предназначены для использования в разных модулях приложения. Для их хранения создадим отдельную директорию `components` внутри директории `common`.
+
+# Шаг 2. Создание компонента AppIcon.vue
+
+В директории `common/components` создайте новый Vue-компонент с именем `AppIcon.vue`.
+
+Добавьте шаблон компонента:
+
+```html
+<template>
+  <button
+    class="column__button column__update icon"
+    type="button"
+  />
+</template>
+```
+
+# Шаг 3. Добавление стилей для компонента AppIcon.vue
+
+У компонента `AppIcon.vue` собственной логики не будет, поэтому блок `script` мы пропускаем и сразу добавляем стили:
+
+```javascript
+<style lang="scss" scoped>
+.icon {
+  display: block;
+
+  margin: 0;
+  padding: 0;
+
+  cursor: pointer;
+
+  border: none;
+  background-color: transparent;
+
+  &--edit {
+    width: 14px;
+    height: 14px;
+
+    background-image: url("@/assets/img/icon-pencil.svg");
+    background-size: cover;
+  }
+
+  &--trash {
+    width: 14px;
+    height: 18px;
+
+    background-image: url("@/assets/img/icon-trash.svg");
+    background-size: cover;
+  }
+}
+</style>
+```

@@ -1,0 +1,137 @@
+---
+title: "Добавление страницы редактирования задач в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание страницы редактирования задач
+
+Создайте компонент `TaskEdit.vue` в директории `src/views`. Он использует `TaskCardCreator`:
+
+```html
+<template>
+  <task-card-creator
+      v-if="task"
+      :task-to-edit="task"
+      @edit-task="$emit('editTask', $event)"
+      @delete-task="$emit('deleteTask', $event)"
+  />
+</template>
+
+<script setup>
+import TaskCardCreator from '../modules/tasks/components/TaskCardCreator.vue'
+import { useRoute, useRouter } from 'vue-router'
+import { createNewDate } from '../common/helpers'
+
+const route = useRoute()
+const router = useRouter()
+
+const props = defineProps({
+  tasks: {
+    type: Array,
+    default: () => []
+  }
+})
+
+defineEmits(['editTask', 'deleteTask'])
+
+// Находим задачу из массива задач по id из строки URL
+const task = props.tasks.find(task => +task.id === +route.params.id)
+
+if (task) {
+  const taskDate = task.dueDate
+  task.dueDate = taskDate ? new Date(taskDate) : createNewDate()
+} else {
+  // Перенаправляем на главную страницу, если задача не найдена
+  router.push('/')
+}
+</script>
+```
+
+# Шаг 2. Обработчики в App.vue
+
+Добавим обработчики `edit-task` и `delete-task` в корневой компонент:
+
+```html
+<template>
+  <app-layout
+      :tasks="filteredTasks"
+      :filters="state.filters"
+      @update-tasks="updateTasks"
+  >
+    <router-view
+        :tasks="filteredTasks"
+        :filters="state.filters"
+        @update-tasks="updateTasks"
+        @apply-filters="applyFilters"
+        @add-task="addTask"
+        @edit-task="editTask"
+        @delete-task="deleteTask"
+    />
+  </app-layout>
+</template>
+
+<script setup>
+// ...
+function editTask (task) {
+  const index = state.tasks.findIndex(({ id }) => task.id === id)
+  if (~index) {
+    const newTask = normalizeTask(task)
+    if (newTask.userId) {
+      newTask.user = { ...getTaskUserById(newTask.userId) }
+    }
+    state.tasks.splice(index, 1, newTask)
+  }
+}
+
+function deleteTask (id) {
+  state.tasks = state.tasks.filter(task => task.id !== id)
+}
+</script>
+```
+
+Пробросим события в `HomeView`:
+
+```html
+      <!--      Отображение дочерних маршрутов-->
+      <router-view
+          :tasks="props.tasks"
+          @add-task="$emit('addTask', $event)"
+          @edit-task="$emit('editTask', $event)"
+          @delete-task="$emit('deleteTask', $event)"
+      />
+```
+
+# Шаг 3. Подключение компонента к маршрутизатору
+
+Обновим файл маршрутов `src/router/routes.js`:
+
+```javascript
+export default [
+	{
+		path: '/',
+		name: 'HomeView',
+		component: () => import('../views/HomeView.vue'),
+		meta: { layout: 'AppLayoutMain' },
+		children: [
+			{
+				path: '/:id',
+				name: 'TaskView',
+				component: () => import('../views/TaskView.vue'),
+				meta: { layout: 'AppLayoutMain' }
+			},
+			{
+				path: '/tasks/create',
+				name: 'TaskCreate',
+				component: () => import('../views/TaskCreate.vue'),
+				meta: { layout: 'AppLayoutMain' }
+			},
+			{
+				path: '/tasks/edit/:id',
+				name: 'TaskEdit',
+				component: () => import('../views/TaskEdit.vue'),
+				meta: { layout: 'AppLayoutMain' }
+			}
+		]
+	}
+]
+```

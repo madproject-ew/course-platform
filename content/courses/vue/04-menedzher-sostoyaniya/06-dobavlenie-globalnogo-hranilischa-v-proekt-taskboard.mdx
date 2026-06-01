@@ -1,0 +1,105 @@
+---
+title: "Добавление глобального хранилища в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Создание файлов хранилищ
+
+Перенесём глобальные объекты — задачи, колонки и фильтры — в отдельные хранилища Pinia. Это избавит нас от транзитной передачи данных через props и events.
+
+В проекте уже подключён менеджер состояния Pinia, дополнительная настройка не нужна.
+
+Создайте директорию `src/stores` со следующими файлами:
+
+*   `index.js`;
+*   `columns.js`;
+*   `filters.js`;
+*   `tasks.js`;
+*   `users.js`.
+
+# Шаг 2. Создание хранилища колонок
+
+Инициализируем хранилище для колонок:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useColumnsStore = defineStore('columns', {
+	state: () => ({}),
+	getters: {},
+	actions: {}
+})
+
+```
+
+Добавим экспорт в `index.js`:
+
+```javascript
+export { useColumnsStore } from './columns'
+```
+
+# Шаг 3. Создание хранилища фильтров
+
+Инициализируем хранилище для фильтров:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useFiltersStore = defineStore('filters', {
+	state: () => ({}),
+	getters: {},
+	actions: {},
+})
+```
+
+Добавим экспорт в `index.js`:
+
+```javascript
+export { useColumnsStore } from './columns'
+export { useFiltersStore } from './filters'
+```
+
+# Шаг 4. Создание хранилища пользователей
+
+Инициализируем хранилище для пользователей:
+
+```javascript
+import { defineStore } from "pinia";
+
+export const useUsersStore = defineStore('users', {
+  state: () => ({}),
+  getters: {},
+  actions: {},
+});
+```
+
+Добавим экспорт в `index.js`:
+
+```javascript
+export { useColumnsStore } from './columns'
+export { useFiltersStore } from './filters'
+export { useUsersStore } from './users'
+```
+
+# Шаг 5. Создание хранилища задач
+
+Инициализируем хранилище для задач:
+
+```javascript
+import { defineStore } from 'pinia'
+
+export const useTasksStore = defineStore('tasks', {
+	state: () => ({}),
+	getters: {},
+	actions: {},
+})
+```
+
+Добавим экспорт в `index.js`:
+
+```javascript
+export { useColumnsStore } from './columns'
+export { useFiltersStore } from './filters'
+export { useUsersStore } from './users'
+export { useTasksStore } from './tasks'
+```

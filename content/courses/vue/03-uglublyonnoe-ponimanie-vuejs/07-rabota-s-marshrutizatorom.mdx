@@ -1,0 +1,319 @@
+---
+title: "Работа с маршрутизатором"
+type: article
+quiz:
+  - question: "Для чего используется поле meta в конфигурации маршрута vue-router?"
+    type: single
+    options:
+      - "Для указания HTTP-метода запроса"
+      - "Для передачи дополнительных данных в маршрут, например флага авторизации"
+      - "Для задания SEO-метатегов страницы"
+      - "Для указания типа компонента"
+    answer: 1
+  - question: "Чем отличается router.push от router.replace?"
+    type: single
+    options:
+      - "push работает только с именованными маршрутами, а replace — с путями"
+      - "replace не добавляет запись в историю браузера, и пользователь не сможет вернуться назад"
+      - "push выполняет полную перезагрузку страницы, а replace — нет"
+      - "Между ними нет разницы, это псевдонимы"
+    answer: 1
+  - question: "Какие утверждения о vue-router верны?"
+    type: multiple
+    options:
+      - "useRoute() предоставляет информацию о текущем маршруте и его параметрах"
+      - "RouterLink автоматически преобразуется в тег <a> при рендеринге"
+      - "Ленивая загрузка компонентов реализуется через динамический import()"
+      - "Вложенные маршруты не требуют отдельного RouterView"
+      - "useRouter() используется для получения параметров текущего URL"
+    answers: [0, 1, 2]
+---
+
+# Работа с маршрутизатором
+
+На данном этапе разработки приложению необходима маршрутизация. Разберёмся, зачем она нужна и как работает.
+
+Концепция одностраничного приложения (SPA) предполагает динамическую перерисовку содержимого страницы в ответ на изменение данных, вместо полной загрузки новой страницы. Благодаря этому SPA по поведению напоминает нативное приложение.
+
+Для реализации сложных сценариев навигации применяется маршрутизация --- механизм, аналогичный работе обычных веб-сайтов, где сервер возвращает определённую страницу в зависимости от URL. Отличительная черта маршрутизации в SPA заключается в том, что может перерисовываться не вся страница целиком, а лишь отдельный её компонент.
+
+Стандартным маршрутизатором для Vue-приложений является [vue-router](https://router.vuejs.org/). Рассмотрим его использование на конкретном примере --- классическом SPA для блога, содержащем:
+
+*   домашнюю страницу `Home.vue`;
+*   страницу профиля `Profile.vue` с разделами `Settings` и `My Articles`;
+*   страницу статьи `Article.vue`.
+
+## Конфигурация маршрутов
+
+Отдельный маршрут описывается объектом следующего вида:
+
+```javascript
+import Home from 'Home.vue'
+
+const homeRoute = {
+  path: '/',
+  name: 'home',
+  component: Home
+}
+```
+
+Если требуется реализовать «ленивую» загрузку, при которой компонент подгружается только при переходе пользователя на соответствующий маршрут, это можно сделать через динамический импорт:
+
+```javascript
+const homeRoute = {
+  path: '/',
+  name: 'home',
+  component: () => import('Home.vue')
+}
+```
+
+Такой подход сокращает объём первоначально загружаемых ресурсов, что положительно сказывается на пользовательском опыте.
+
+Маршруты поддерживают вложенность --- дочерние маршруты указываются в поле `children`:
+
+```javascript
+const profileRoute = {
+  path: '/profile',
+  name: 'profile',
+  component: () => import ('Profile.vue'),
+  children: [
+    {
+      path: 'settings',
+      name: 'profile-settings',
+      component: () => import ('ProfileSettings.vue')
+    },
+    {
+      path: 'articles',
+      name: 'profile-articles',
+      component: () => import ('ProfileArticles.vue')
+    }
+  ]
+}
+```
+
+Для передачи дополнительных данных в маршрут служит поле `meta`. Например, можно указать, что для просмотра страницы требуется авторизация, и обработать это позднее. В нашем примере авторизация необходима для маршрута `/profile` и всех его дочерних маршрутов:
+
+```javascript
+const profileRoute = {
+  path: '/profile',
+  name: 'profile',
+  component: () => import ('Profile.vue'),
+  meta: { requiresAuth: true },
+  children: [
+    {
+      path: 'settings',
+      name: 'profile-settings',
+      component: () => import ('ProfileSettings.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: 'articles',
+      name: 'profile-articles',
+      component: () => import ('ProfileArticles.vue'),
+      meta: { requiresAuth: true }
+    }
+  ]
+}
+```
+
+`vue-router` также позволяет передавать параметры в маршрутах. В нашем блоге это удобно для статей, каждая из которых обладает уникальным идентификатором:
+
+```javascript
+const articleRoute = {
+  path: '/articles/:id',
+  name: 'article',
+  component: () => import ('Article.vue')
+}
+```
+
+Теперь любой URL вида `/articles/123` или `/articles/829` будет обработан компонентом `Article.vue`.
+
+Для подключения маршрутизатора к приложению все маршруты собираются в единый массив:
+
+```javascript
+const routes = [
+  {
+    path: '/',
+    name: 'home',
+    component: () => import('Home.vue')
+  },
+  {
+    path: '/profile',
+    name: 'profile',
+    component: () => import ('Profile.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'settings',
+        name: 'profile-settings',
+        component: () => import ('ProfileSettings.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'articles',
+        name: 'profile-articles',
+        component: () => import ('ProfileArticles.vue'),
+        meta: { requiresAuth: true }
+      }
+    ]
+  },
+  {
+    path: '/articles/:id',
+    name: 'article',
+    component: () => import ('Article.vue')
+  }
+]
+```
+
+Затем создаётся экземпляр маршрутизатора:
+
+```javascript
+import { createRouter, createWebHistory } from 'vue-router'
+
+const routes = [
+  /* Наши маршруты */
+]
+
+const router = createRouter({
+  routes,
+  history: createWebHistory()
+})
+```
+
+Свойство `history` определяет режим работы маршрутизатора. В большинстве случаев используется `createWebHistory`, воспроизводящий стандартное поведение браузера. Подробнее о режимах работы `vue-router` читайте [здесь](https://router.vuejs.org/guide/essentials/history-mode.html).
+
+После этого `router` подключается к экземпляру Vue:
+
+```javascript
+import { createApp } from 'vue'
+import App from 'App.vue'
+
+const app = createApp(App)
+
+const router = createRouter({ /* Указанная выше конфигурация */ })
+
+/* Подключаем маршрутизатор */
+app.use(router)
+```
+
+## Маршрутизатор внутри компонентов
+
+После подключения `vue-router` к приложению глобально становятся доступны два компонента:
+
+*   `<router-view>`;
+*   `<router-link>`.
+
+### RouterView
+
+`RouterView` отрисовывает компонент, соответствующий текущему URL. В нашем случае его следует разместить на верхнем уровне приложения --- в `App.vue`:
+
+```xml
+<template>
+  <router-view />
+</template>
+```
+
+Для отображения дочерних маршрутов `/profile` ещё один `RouterView` размещается внутри компонента `Profile.vue`:
+
+```xml
+<template>
+  <div class="profile">
+    <h1>Profile</h1>
+
+    <router-view />
+  </div>
+</template>
+```
+
+### RouterLink
+
+Вместо обычного тега `<a>` используется `<router-link>`, который позволяет `vue-router` осуществлять навигацию без перезагрузки страницы. При рендеринге этот компонент автоматически преобразуется в тег `<a>`.
+
+Добавим навигацию в корневой компонент `App.vue`:
+
+```xml
+<template>
+  <div class="navigation">
+    <router-link to="/">Home</router-link>
+    <router-link to="/profile">Profile</router-link>
+  </div>
+
+  <router-view />
+</template>
+```
+
+И в компонент `Profile.vue`:
+
+```xml
+<template>
+  <div class="profile">
+    <h1>Profile</h1>
+
+    <div class="navigation">
+      <router-link to="/profile/settings">Settings</router-link>
+      <router-link to="/profile/articles">Articles</router-link>
+    </div>
+
+    <router-view />
+  </div>
+</template>
+```
+
+### Маршрутизатор в JavaScript
+
+Иногда возникает необходимость управлять навигацией программно, из кода компонента. Для этого `vue-router` предоставляет два инструмента:
+
+*   `useRouter()` --- для работы с маршрутизатором;
+*   `useRoute()` --- для получения информации о текущем маршруте и его параметрах.
+
+#### useRouter
+
+Перенаправление пользователя на другую страницу выполняется следующим образом:
+
+```xml
+<script setup>
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+/* Этот код перенаправит пользователя на страницу профиля */
+router.push('/profile')
+</script>
+```
+
+Вместо `push` можно использовать метод `replace` --- он полезен, когда не нужно, чтобы пользователь мог вернуться назад через историю браузера.
+
+Помимо абсолютного пути, в качестве аргумента принимается объект:
+
+```javascript
+router.push({
+  name: 'profile'
+})
+```
+
+Это удобно при длинных путях или необходимости передавать query-параметры. Подробности описаны в [документации](https://router.vuejs.org/guide/essentials/navigation.html).
+
+Такой же объект может быть передан в атрибут `to` компонента `router-link`:
+
+```xml
+<router-link :to={ name: 'profile' }>Profile</router-link>
+```
+
+#### useRoute
+
+Вспомним маршрут `/articles/:id`. При переходе по адресу `/articles/123` в маршрут передаётся параметр `id` со значением `123`:
+
+```xml
+<script setup>
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+/* Получим значение параметра id */
+const articleId = route.params.id
+</script>
+```
+
+Получив идентификатор статьи, мы можем запросить её данные с сервера внутри компонента.
+
+> В этом разделе приводятся ссылки на англоязычную документацию `vue-router`. Вы можете воспользоваться автоматическим переводом браузера. Актуальная документация Vue Router доступна на [router.vuejs.org](https://router.vuejs.org/).

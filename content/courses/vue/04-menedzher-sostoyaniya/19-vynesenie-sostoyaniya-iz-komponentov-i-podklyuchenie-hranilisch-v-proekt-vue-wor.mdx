@@ -1,0 +1,437 @@
+---
+title: "Вынесение состояния из компонентов и подключение хранилищ в проект TaskBoard"
+type: demo
+---
+
+# Шаг 1. Подключение менеджера состояний к компоненту DeskColumn.vue
+
+На данный момент состояния хранятся в корневых компонентах App.vue и DeskColumn.vue. Нужно изменить этот подход и получать данные из хранилища Pinia.
+
+Начнём с компонента DeskColumn.vue. Инициализируем хранилище задач:
+
+```html
+
+<script setup>
+// ...
+import { useTasksStore } from '@/stores'
+
+const tasksStore = useTasksStore()
+```
+
+Удалим задачи из `props`:
+
+```javascript
+const props = defineProps({
+  column: {
+    type: Object,
+    required: true
+  }
+})
+```
+
+Уберём `updateTasks` из `emits`:
+
+```javascript
+const emits = defineEmits(['update', 'delete'])
+```
+
+Заменим `props.tasks` на `tasksStore.filteredTasks` в вычисляемом свойстве `columnTasks`:
+
+```javascript
+const columnTasks = computed(() => {
+  return tasksStore.filteredTasks
+    .filter(task => task.columnId === props.column.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+})
+```
+
+Заменим обращение к `props.tasks` на `tasksStore.tasks` и вызов `emits` на метод хранилища в функции `moveTask`:
+
+```javascript
+function moveTask (active, toTask) {
+  // Не обновлять, если нет изменений
+  if (toTask && active.id === toTask.id) {
+    return
+  }
+
+  const toColumnId = props.column ? props.column.id : null
+  // Получить задачи для текущей колонки
+  const targetColumnTasks = getTargetColumnTasks(toColumnId, tasksStore.tasks)
+  const activeClone = { ...active, columnId: toColumnId }
+  // Добавить активную задачу в колонку
+  const resultTasks = addActive(activeClone, toTask, targetColumnTasks)
+  const tasksToUpdate = []
+
+  // Отсортировать задачи в колонке
+  resultTasks.forEach((task, index) => {
+    if (task.sortOrder !== index || task.id === active.id) {
+      const newTask = { ...task, sortOrder: index }
+      tasksToUpdate.push(newTask)
+    }
+  })
+  tasksStore.updateTasks(tasksToUpdate)
+}
+```
+
+> Если вы используете современный редактор кода (IDE), то можете легко выполнить замену по всему файлу. Например, в продуктах JetBrains (WebStorm, PyCharm и других) для этого используется сочетание клавиш `Cmd + R` на Mac или `Ctrl + R` на Linux и Windows. Вы можете проверить и найти такое сочетание клавиш в вашем редакторе, чтобы быстрее редактировать код.
+
+Заменим:
+
+```javascript
+emits('updateTasks', tasksToUpdate)
+```
+
+На:
+
+```javascript
+tasksStore.updateTasks(tasksToUpdate)
+```
+
+# Шаг 2. Подключение менеджера состояний к компоненту HomeView.vue
+
+Подключим хранилища к компоненту. Код работы с колонками больше не нужен здесь, так как он вынесен в хранилище.
+
+Замените содержимое блока `script`:
+
+```html
+<script setup>
+import { STATUSES } from '../common/constants'
+import DeskColumn from '@/modules/columns/components/DeskColumn.vue'
+import { getImage } from '../common/helpers'
+import { useUsersStore, useColumnsStore, useFiltersStore } from '@/stores'
+
+// Определяем хранилища
+const usersStore = useUsersStore()
+const columnsStore = useColumnsStore()
+const filtersStore = useFiltersStore()
+</script>
+```
+
+Обратите внимание, насколько проще стал компонент. Теперь обновим `template`.
+
+Дочерним компонентам больше не нужны `props` и `events`:
+
+```html
+<!--      Отображение дочерних маршрутов-->
+<router-view />
+```
+
+Добавление колонки теперь вызывает метод хранилища:
+
+```html
+<button
+    class="desk__add"
+    type="button"
+    @click="columnsStore.addColumn"
+>
+```
+
+Фильтр по активным пользователям:
+
+```html
+<li
+  v-for="user in usersStore.users"
+  :key="user.id"
+  :title="user.name"
+  class="user-filter__item"
+  :class="{ active: filtersStore.filters.users.some(id => id === user.id) }"
+  @click="filtersStore.applyFilters({ item: user.id, entity: 'users' })"
+>
+```
+
+Фильтр по статусам:
+
+```html
+<li
+  v-for="({ value, label }) in STATUSES"
+  :key="value"
+  class="meta-filter__item"
+  :class="{ active: filtersStore.filters.statuses.some(s => s === value) }"
+  @click="filtersStore.applyFilters({ item: value, entity: 'statuses' })"
+>
+```
+
+Рендеринг колонок:
+
+```html
+<!--      Колонки и задачи-->
+<div v-if="columnsStore.columns.length" class="desk__columns">
+<!--        Показываем колонки-->
+<desk-column
+    v-for="column in columnsStore.columns"
+    :key="column.id"
+    :column="column"
+    @update="columnsStore.updateColumn"
+    @delete="columnsStore.deleteColumn"
+/>
+</div>
+```
+
+# Шаг 3. Подключение менеджера состояний к компоненту TaskView.vue
+
+Доработаем блок `script`.
+
+Добавим хранилище задач:
+
+```javascript
+import { useTasksStore } from '@/stores'
+
+const tasksStore = useTasksStore()
+```
+
+Удалим `props` и переработаем вычисляемое свойство `task`:
+
+```javascript
+const task = computed(() => {
+  return tasksStore.tasks.find(task => task.id == route.params.id)
+})
+```
+
+# Шаг 4. Подключение менеджера состояний к компоненту TaskEdit.vue
+
+Подключим хранилище задач:
+
+```javascript
+import { useTasksStore } from '@/stores'
+
+const tasksStore = useTasksStore()
+```
+
+Удалим `props` и `emits`, затем обновим функцию получения задачи:
+
+```javascript
+const task = tasksStore.tasks.find(task => +task.id === +route.params.id)
+```
+
+Удалим обработчики из компонента `task-card-creator` в шаблоне:
+
+```html
+<template>
+  <task-card-creator
+      v-if="task"
+      :task-to-edit="task"
+  />
+</template>
+```
+
+# Шаг 5. Подключение менеджера состояний к компоненту AppLayoutHeader.vue
+
+Подключим хранилище фильтров:
+
+```html
+<script setup>
+import { useFiltersStore } from '@/stores'
+
+const filtersStore = useFiltersStore()
+</script>
+```
+
+В шаблоне добавим ссылку на главную страницу при клике на логотип:
+
+```html
+    <!--    Логотип-->
+    <div class="header__logo">
+      <router-link to="/" class="logo">
+        <img
+          src="@/assets/img/logo.svg"
+          alt="TaskBoard logo"
+          width="147"
+          height="23"
+        />
+      </router-link>
+    </div>
+```
+
+Реализуем фильтр поиска:
+
+```html
+    <!--    Поиск-->
+    <form action="#" class="header__search">
+      <input
+          type="search"
+          name="search"
+          required
+          placeholder="Поиск"
+          @input="filtersStore.applyFilters({ item: $event.target.value, entity: 'search' })"
+      />
+      <button type="submit">Найти</button>
+    </form>
+```
+
+# Шаг 6. Подключение менеджера состояний к компоненту AppLayoutSidebar.vue
+
+Подключим хранилище задач:
+
+```html
+<script setup>
+// ...
+import { useTasksStore } from '@/stores/tasks'
+
+const tasksStore = useTasksStore()
+// ...
+</script>
+```
+
+Удалим `props`, `emits` и вычисляемое свойство `sidebarTasks`.
+
+Обновим функцию `moveTask`:
+
+```javascript
+function moveTask (active, toTask) {
+  // Не обновляем массив, если задача не перемещалась
+  if (toTask && active.id === toTask.id) {
+    return
+  }
+
+  const toColumnId = null
+  // Получить задачи для текущей колонки
+  const targetColumnTasks = getTargetColumnTasks(toColumnId, tasksStore.tasks)
+  const activeClone = { ...active, columnId: toColumnId }
+  // Добавить активную задачу в колонку
+  const resultTasks = addActive(activeClone, toTask, targetColumnTasks)
+  const tasksToUpdate = []
+
+  // Отсортировать задачи в колонке
+  resultTasks.forEach((task, index) => {
+    if (task.sortOrder !== index || task.id === active.id) {
+      const newTask = { ...task, sortOrder: index }
+      tasksToUpdate.push(newTask)
+    }
+  })
+  tasksStore.updateTasks(tasksToUpdate)
+}
+```
+
+Уберём неиспользуемые импорты из `vue`, оставив только `reactive`:
+
+```javascript
+import { reactive } from 'vue'
+```
+
+В шаблоне обновим счётчик задач:
+
+```html
+<div class="backlog__counter">
+  {{ tasksStore.sidebarTasks.length }}
+</div>
+```
+
+И источник данных для компонента `task-card`:
+
+```html
+<task-card
+    v-for="task in tasksStore.sidebarTasks"
+    :key="task.id"
+    :task="task"
+    class="backlog__task"
+    @drop="moveTask($event, task)"
+/>
+```
+
+# Шаг 7. Рефакторинг компонента AppLayoutMain.vue
+
+Удалим `props` и `emits` из компонента.
+
+Блок `script`:
+
+```html
+<script setup>
+import AppLayoutHeader from './AppLayoutHeader.vue'
+import AppLayoutSidebar from './AppLayoutSidebar.vue'
+</script>
+```
+
+Блок `template`:
+
+```html
+<template>
+  <div class="app_layout">
+    <app-layout-header/>
+    <div class="content">
+      <app-layout-sidebar />
+      <slot/>
+    </div>
+  </div>
+</template>
+```
+
+# Шаг 8. Подключение менеджера состояний к компоненту TaskCardCreator.vue
+
+Подключим хранилище задач:
+
+```html
+<script setup>
+// ...
+import { useTasksStore } from '@/stores/tasks'
+
+const tasksStore = useTasksStore()
+</script>
+```
+
+Удалим `emits`.
+
+Обновим функцию `deleteTask`:
+
+```javascript
+function deleteTask () {
+  tasksStore.deleteTask(task.value.id)
+  router.push('/')
+}
+```
+
+Обновим функцию `submit`:
+
+```javascript
+function submit () {
+  // Валидируем задачу
+  if (!validateFields(task.value, validations.value)) {
+    isFormValid.value = false
+    return
+  }
+  if (props.taskToEdit) {
+    // Редактируемая задача
+    tasksStore.editTask(task.value)
+  } else {
+    // Новая задача
+    tasksStore.addTask(task.value)
+  }
+  // Переход на главную страницу
+  router.push('/')
+}
+```
+
+# Шаг 9. Рефакторинг компонента App.vue
+
+Теперь можно значительно упростить корневой компонент: убрать все локальные состояния и инициировать загрузку данных в хранилища.
+
+Обновим блок `script`:
+
+```html
+<script setup>
+import { AppLayout } from './layouts'
+import { useTasksStore, useColumnsStore, useUsersStore } from './stores'
+
+// Определяем хранилища
+const tasksStore = useTasksStore()
+const usersStore = useUsersStore()
+const columnsStore = useColumnsStore()
+
+// Загрузка первоначальных данных
+// Загружаем задачи
+void tasksStore.fetchTasks()
+// Загружаем пользователей
+void usersStore.fetchUsers()
+// Загружаем колонки
+void columnsStore.fetchColumns()
+</script>
+```
+
+Упростим шаблон:
+
+```html
+<template>
+  <app-layout>
+    <router-view />
+  </app-layout>
+</template>
+```

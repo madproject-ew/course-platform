@@ -1,0 +1,172 @@
+---
+title: "Хранилище для счётчика"
+type: demo
+---
+
+# Шаг 1. Добавление хранилища в компонент счётчика
+
+В этой практической демонстрации мы создадим хранилище Pinia и подключим его к компоненту счётчика.
+
+Создайте директорию `demo/demo4` и скопируйте в неё следующие файлы:
+
+*   `demo/src/demo1/CounterButton.vue`;
+*   `demo/src/demo1/CounterValue.vue`;
+*   `demo/src/demo1/DemoCounter.vue`.
+
+В файле `demo/src/main.js` подключите Pinia:
+
+```javascript
+import { createPinia } from "pinia";
+
+/* Код */
+
+app.use(createPinia());
+```
+
+# Шаг 2. Создание хранилища
+
+В директории `demo/demo4` создайте файл `store.js` и добавьте в него базовую структуру хранилища:
+
+```javascript
+import { defineStore } from 'pinia';
+
+export const useCounterStore = defineStore('counter', {
+  state: () => ({}),
+  getters: {},
+  actions: {}
+});
+```
+
+Теперь дополним `state` значением счётчика:
+
+```javascript
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    value: 0
+  }),
+  getters: {},
+  actions: {}
+});
+```
+
+Добавим два метода в `actions`, повторяющие существующие методы `increment` и `decrement`:
+
+```javascript
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    value: 0
+  }),
+  getters: {},
+  actions: {
+    increment() {
+      this.value++;
+    },
+    decrement() {
+      this.value--;
+    }
+  }
+});
+```
+
+Также создадим геттер `isDecrementDisabled`, который возвращает `true`, когда значение счётчика равно нулю или отрицательное:
+
+```javascript
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    value: 0
+  }),
+  getters: {
+    isDecrementDisabled() {
+      return this.value <= 0;
+    }
+  },
+  actions: {
+    increment() {
+      this.value++
+    },
+    decrement() {
+      this.value--;
+    }
+  }
+});
+```
+
+# Шаг 3. Модификация кнопки
+
+Теперь, когда в хранилище есть геттер `isDecrementDisabled`, мы можем задействовать его для блокировки кнопки уменьшения.
+
+В компоненте `CounterButton.vue` добавим стили для состояния `disabled`:
+
+```scss
+.counter-button {
+  /* Стили */
+
+  &[disabled] {
+    background: #999;
+    cursor: not-allowed;
+  }
+}
+```
+
+# Шаг 4. Подключение хранилища
+
+В компоненте `DemoCounter.vue` подключим созданное хранилище:
+
+```javascript
+import CounterButton from "./CounterButton.vue";
+import CounterValue from "./CounterValue.vue";
+import DemoContainer from '../components/DemoContainer.vue';
+import { useCounterStore } from "./store";
+
+const counterStore = useCounterStore()
+```
+
+Удалим все ранее использовавшиеся локальные методы и переменные, а в шаблоне будем обращаться напрямую к хранилищу:
+
+```html
+<template>
+  <demo-container>
+    <div class="counter">
+      <counter-button :disabled="counterStore.isDecrementDisabled" @action="counterStore.decrement">-</counter-button>
+
+      <counter-value :value="counterStore.value" />
+
+      <counter-button @action="counterStore.increment">+</counter-button>
+    </div>
+  </demo-container>
+</template>
+```
+
+# Шаг 5. Итог
+
+По завершении всех шагов компонент `DemoCounter.vue` выглядит следующим образом:
+
+```html
+<template>
+  <demo-container>
+    <div class="counter">
+      <counter-button :disabled="counterStore.isDecrementDisabled" @action="counterStore.decrement">-</counter-button>
+
+      <counter-value :value="counterStore.value" />
+
+      <counter-button @action="counterStore.increment">+</counter-button>
+    </div>
+  </demo-container>
+</template>
+
+<script setup>
+import CounterButton from "./CounterButton.vue";
+import CounterValue from "./CounterValue.vue";
+import DemoContainer from '../components/DemoContainer.vue';
+import { useCounterStore } from "./store";
+
+const counterStore = useCounterStore()
+</script>
+
+<style lang="scss" scoped>
+.counter {
+  display: flex;
+  align-items: center;
+}
+</style>
+```

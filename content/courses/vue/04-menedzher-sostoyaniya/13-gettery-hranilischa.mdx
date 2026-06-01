@@ -1,0 +1,120 @@
+---
+title: "Геттеры хранилища"
+type: article
+quiz:
+  - question: "Чем являются геттеры в контексте хранилища Pinia?"
+    type: single
+    options:
+      - "Методами для изменения состояния"
+      - "Аналогом вычисляемых свойств (computed) для состояния хранилища"
+      - "Обработчиками событий хранилища"
+      - "Функциями валидации данных"
+    answer: 1
+  - question: "Что происходит с кешированием геттера, когда он возвращает функцию для приёма аргументов?"
+    type: single
+    options:
+      - "Кеширование работает эффективнее"
+      - "Кеширование не меняется"
+      - "Геттер теряет кеширование и работает как обычная функция"
+      - "Кеширование применяется только к первому вызову"
+    answer: 2
+  - question: "Какие утверждения о геттерах Pinia верны?"
+    type: multiple
+    options:
+      - "Геттер получает состояние хранилища в качестве аргумента"
+      - "Результат одного геттера можно использовать внутри другого геттера"
+      - "Геттеры не могут возвращать функции"
+      - "В Options API геттеры доступны через mapState"
+      - "Геттеры автоматически изменяют состояние при вызове"
+    answers: [0, 1, 3]
+---
+
+# Геттеры хранилища
+
+Геттеры являются полным аналогом вычисляемых свойств (computed) для состояния хранилища. Они объявляются через свойство `getters` в `defineStore()` и получают состояние в качестве аргумента:
+
+```javascript
+export const useProfileStore = defineStore('profile', {
+  state: () => ({
+    name: 'Иван Петров',
+  }),
+  getters: {
+    nameWithPrefix: state => `Имя пользователя: ${state.name}`,
+  },
+})
+```
+
+Результат одного геттера можно использовать внутри другого:
+
+```javascript
+export const useProfileStore = defineStore('profile', {
+  state: () => ({
+    name: 'Иван Петров',
+  }),
+  getters: {
+    getNameWithPrefix: state => `Имя пользователя: ${state.name}`,
+    getFullProfile: state => ({
+      name: state.getNameWithPrefix,
+      age: state.age
+    })
+  },
+})
+```
+
+## Передача аргументов в геттер
+
+Иногда геттеру требуются входные параметры. Для этого геттер должен возвращать функцию:
+
+```javascript
+export const useProfileStore = defineStore('profile', {
+  state: () => ({
+    name: 'Иван Петров',
+  }),
+  getters: {
+    getNameWithPrefix: state => `Имя пользователя: ${state.name}`,
+    getFullProfile: state => ({
+      name: state.getNameWithPrefix,
+      age: state.age
+    }),
+    getGreetings: state => {
+      return greeting => `${greeting} ${state.name}`
+    }
+  },
+})
+```
+
+```xml
+<template>
+  {{ store.getGreetings('Привет') }}
+</template>
+
+<script setup>
+ import { useStore } from './stores/profile'
+
+ const store = useStore()
+
+</script>
+```
+
+Важно учитывать, что при таком подходе геттеры теряют кеширование и работают как обычные [функции.](https://pinia.vuejs.org/core-concepts/getters.html#passing-arguments-to-getters)
+
+## Использование с Options API
+
+В Options API геттеры доступны точно так же, как и обычные свойства хранилища:
+
+```xml
+<template>
+  {{ store.getGreetings('Привет') }}
+</template>
+
+<script>
+import { mapState } from 'pinia'
+import { useStore } from './stores/profile'
+
+export default {
+  computed: {
+    ...mapState(useStore, ['getNameWithPrefix']),
+  },
+}
+</script>
+```

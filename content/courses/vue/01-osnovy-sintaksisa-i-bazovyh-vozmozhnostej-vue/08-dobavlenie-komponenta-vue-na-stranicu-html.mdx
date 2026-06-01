@@ -1,0 +1,197 @@
+---
+title: "Добавление компонента Vue на страницу HTML"
+type: demo
+---
+
+# Шаг 1. Создание нового проекта
+
+Vue-компоненты можно встраивать в уже готовые проекты. В этом демо мы создадим простой проект и подключим к нему Vue.
+
+Создайте рабочую директорию:
+
+```bash
+mkdir my-project
+```
+
+Перейдите в неё:
+
+```bash
+cd my-project
+```
+
+Инициализируйте новый проект командой:
+
+```bash
+npm init
+```
+
+После ответов на вопросы в проекте появится файл `package.json` примерно с таким содержимым:
+
+```json
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
+
+```
+
+# Шаг 2. Создание index.html
+
+В корне проекта создайте файл `index.html` со следующим содержимым:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>Hello World</h1>
+</body>
+</html>
+```
+
+# Шаг 3. Добавление сервера
+
+Для запуска проекта можно воспользоваться локальным сервером. Установите пакет `http-server`:
+
+```bash
+npm install http-server
+```
+
+Добавьте команду `start` для запуска сервера в секцию scripts файла `package.json`:
+
+```json
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server ./ -f ./index.html"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}
+```
+
+Запустите проект командой:
+
+```bash
+npm start
+```
+
+# Шаг 4. Подключение Vue
+
+Теперь подключим Vue к проекту через CDN. Добавьте в `index.html` в начало `body` следующий скрипт:
+
+```html
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+```
+
+После этого файл `index.html` будет выглядеть так:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+    <div>Hello World</div>
+</body>
+</html>
+```
+
+# Шаг 5. Создание компонента Vue
+
+> Подробнее о создании и работе с компонентами мы расскажем позже.
+
+Создайте первый Vue-компонент в файле `component.js`:
+
+```javascript
+export default {
+  data() {
+    return { msg: 'Hello from vue' }
+  },
+  template: `<div>{{ msg }}</div>`
+}
+```
+
+# Шаг 6. Добавление компонента Vue в index.html
+
+> Подробнее о создании экземпляра Vue мы расскажем позже.
+
+Для начала работы с Vue необходимо создать экземпляр приложения. Добавьте в `index.html` перед закрывающим тегом `</body>` следующий скрипт:
+
+```html
+<script type="module">
+  import { createApp } from 'vue'
+  import MyComponent from './component.js'
+
+  createApp(MyComponent).mount('#component')
+</script>
+```
+
+Далее нужно указать элемент, к которому будет монтироваться компонент. Добавьте в `index.html`:
+
+```html
+<div id="component"></div>
+```
+
+Итоговый файл `index.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+
+    <div id="component"></div>
+
+    <script type="module">
+      import { createApp } from 'vue'
+      import MyComponent from './component.js'
+
+      createApp(MyComponent).mount('#component')
+    </script>
+</body>
+</html>
+```
+
+Запустите проект командой `npm start` и откройте результат в браузере по адресу `http://localhost:8080/`.
