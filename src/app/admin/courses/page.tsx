@@ -55,6 +55,15 @@ export default function AdminCoursesPage() {
         fetchCourses();
     };
 
+    const togglePublish = async (course: CourseItem) => {
+        await fetch("/api/admin/courses", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: course.id, isPublished: !course.isPublished }),
+        });
+        fetchCourses();
+    };
+
     return (
         <div className="container mx-auto px-4 py-12">
             <h1 className="mb-8 text-3xl font-bold">Управление курсами</h1>
@@ -69,6 +78,13 @@ export default function AdminCoursesPage() {
                                     <Badge variant={course.isPublished ? "default" : "secondary"}>
                                         {course.isPublished ? "Опубликован" : "Скрыт"}
                                     </Badge>
+                                    <Button
+                                        variant={course.isPublished ? "outline" : "default"}
+                                        size="sm"
+                                        onClick={() => togglePublish(course)}
+                                    >
+                                        {course.isPublished ? "Снять с публикации" : "Опубликовать"}
+                                    </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"
