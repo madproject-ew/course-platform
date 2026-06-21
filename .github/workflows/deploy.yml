@@ -1,0 +1,36 @@
+name: Deploy to courses.ew-production.ru
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SRV_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/srv_194_34
+          chmod 600 ~/.ssh/srv_194_34
+          ssh-keyscan -p 18 194.34.239.226 >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Write .env.prod
+        env:
+          ENV_PROD: ${{ secrets.ENV_PROD }}
+        run: printf '%s\n' "$ENV_PROD" > .env.prod
+
+      - name: Deploy
+        env:
+          SSH_IDENTITY: /home/runner/.ssh/srv_194_34
+        run: ./deploy.sh
