@@ -39,6 +39,23 @@ async function main() {
   });
 
   console.log("Course 'vue' created");
+
+  // Нейровидео с нуля — мини-курс, slug совпадает с папкой content/courses/neurovideo
+  await prisma.course.upsert({
+    where: { slug: "neurovideo" },
+    update: { price: 299, freeModules: 1, isPublished: true },
+    create: {
+      slug: "neurovideo",
+      title: "Нейровидео с нуля",
+      description:
+        "Практический мини-курс: как делать видео с помощью нейросетей и зарабатывать на этом. От первого ролика на телефоне до первых клиентов — простым языком, без технического жаргона.",
+      price: 299,
+      freeModules: 1,
+      isPublished: true,
+    },
+  });
+
+  console.log("Course 'neurovideo' created");
 }
 
 main()
