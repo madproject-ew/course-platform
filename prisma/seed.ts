@@ -34,7 +34,8 @@ async function main() {
       description: "Полный курс по Vue 3: от основ до продвинутых тем. Composition API, Pinia, маршрутизация, тестирование и анимации.",
       price: 2499,
       freeModules: 1,
-      isPublished: true,
+      // Снят с публикации: учебные проекты (TaskBoard/OnlinePizza) ждут замены на свои.
+      isPublished: false,
     },
   });
 

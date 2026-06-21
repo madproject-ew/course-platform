@@ -53,6 +53,9 @@ export default async function CoursePage({ params }: Props) {
         hasAccess = !!access && access.expiresAt > new Date();
     }
 
+    // Снят с публикации — скрываем (кроме тех, у кого уже куплен доступ)
+    if (dbCourse && !dbCourse.isPublished && !hasAccess) notFound();
+
     return (
         <div className="container mx-auto max-w-4xl px-4 py-12">
             <Button variant="ghost" className="mb-8" asChild>

@@ -15,11 +15,12 @@ export default async function CoursesHomePage() {
 
     // Get course prices from DB
     const dbCourses = await db.course.findMany({
-        where: { isPublished: true },
-        select: { slug: true, price: true, freeModules: true },
+        select: { slug: true, price: true, freeModules: true, isPublished: true },
     }).catch(() => []);
 
     const priceMap = new Map(dbCourses.map((c) => [c.slug, c]));
+    // Курсы, явно снятые с публикации — прячем из витрины
+    const hiddenSlugs = new Set(dbCourses.filter((c) => !c.isPublished).map((c) => c.slug));
 
     return (
         <div className="container mx-auto px-4 py-12">
@@ -80,7 +81,7 @@ export default async function CoursesHomePage() {
                     </Card>
                 ))}
 
-                {textCourses.map((course) => {
+                {textCourses.filter((course) => !hiddenSlugs.has(course.slug)).map((course) => {
                     const dbInfo = priceMap.get(course.slug);
                     const price = dbInfo?.price ?? 2499;
                     const freeModules = dbInfo?.freeModules ?? 1;

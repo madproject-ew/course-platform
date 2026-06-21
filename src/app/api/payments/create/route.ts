@@ -16,6 +16,9 @@ export async function POST(request: Request) {
     if (!course) {
       return NextResponse.json({ error: "Курс не найден" }, { status: 404 });
     }
+    if (!course.isPublished) {
+      return NextResponse.json({ error: "Курс недоступен для покупки" }, { status: 403 });
+    }
 
     // Check if already has access
     const existingAccess = await db.courseAccess.findUnique({
