@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, FileText, Code, PenLine, Lock, CreditCard, ExternalLink, CheckCircle, Award, BookOpen, Play, Construction, Send } from "lucide-react";
+import { ArrowLeft, FileText, Code, PenLine, Lock, ExternalLink, CheckCircle, Award, BookOpen, Play, Construction, Send, PlayCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +16,13 @@ export const dynamic = "force-dynamic";
 
 type Props = {
     params: Promise<{ slug: string }>;
+    searchParams: Promise<{ payment?: string }>;
 };
 
-export default async function CoursePage({ params }: Props) {
+export default async function CoursePage({ params, searchParams }: Props) {
     const { slug } = await params;
+    const { payment } = await searchParams;
+    const paymentSuccess = payment === "success";
 
     // Check authored courses first
     const authoredCourse = AUTHORED_COURSES.find((c) => c.id === slug);
@@ -56,6 +59,13 @@ export default async function CoursePage({ params }: Props) {
     // Снят с публикации — скрываем (кроме тех, у кого уже куплен доступ)
     if (dbCourse && !dbCourse.isPublished && !hasAccess) notFound();
 
+    // First accessible lesson: free for non-buyers (module 1), any for buyers
+    const firstModule = course.modules[0];
+    const firstLesson = firstModule?.lessons[0];
+    const firstLessonHref = firstModule && firstLesson
+        ? `/course/${course.slug}/${firstModule.slug}/${firstLesson.slug}`
+        : null;
+
     return (
         <div className="container mx-auto max-w-4xl px-4 py-12">
             <Button variant="ghost" className="mb-8" asChild>
@@ -65,12 +75,47 @@ export default async function CoursePage({ params }: Props) {
                 </Link>
             </Button>
 
+            {paymentSuccess && (
+                <div className="mb-8 flex items-start gap-3 rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                    <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+                    <div className="text-sm">
+                        <p className="font-medium text-green-800 dark:text-green-300">
+                            Оплата принята — доступ открыт
+                        </p>
+                        <p className="mt-1 text-green-700 dark:text-green-400/80">
+                            Если доступ ещё не появился, обновите страницу через минуту.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="grid gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2">
                     <h1 className="mb-4 text-3xl font-bold sm:text-4xl">{course.title}</h1>
-                    <p className="mb-8 text-lg text-muted-foreground">
+                    <p className="mb-6 text-lg text-muted-foreground">
                         {course.modulesCount} модулей, {course.lessonsCount} уроков
                     </p>
+
+                    {firstLessonHref && (
+                        <div className="mb-8">
+                            <Button size="lg" className="w-full sm:w-auto" asChild>
+                                <Link href={firstLessonHref}>
+                                    {hasAccess ? (
+                                        <>
+                                            <PlayCircle className="mr-2 h-5 w-5" />
+                                            Продолжить курс
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PlayCircle className="mr-2 h-5 w-5" />
+                                            Начать первый урок (бесплатно)
+                                            <ArrowRight className="ml-2 h-4 w-4" />
+                                        </>
+                                    )}
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
 
                     {course.highlights && course.highlights.length > 0 && (
                         <div className="mb-8 flex flex-wrap gap-2">

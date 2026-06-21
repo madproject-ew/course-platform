@@ -9,8 +9,9 @@ export function createPaymentLink(params: {
   amount: number;
   email: string;
   courseName: string;
+  courseSlug: string;
 }): string {
-  const { orderId, amount, email, courseName } = params;
+  const { orderId, amount, email, courseName, courseSlug } = params;
 
   const queryParams = new URLSearchParams();
   queryParams.set("order_id", orderId);
@@ -21,7 +22,7 @@ export function createPaymentLink(params: {
   queryParams.set("sum", amount.toString());
   queryParams.set("currency", "rub");
   queryParams.set("customer_email", email);
-  queryParams.set("urlReturn", `${APP_URL}/profile?payment=success`);
+  queryParams.set("urlReturn", `${APP_URL}/course/${courseSlug}?payment=success`);
   queryParams.set("urlNotification", `${APP_URL}/api/payments/prodamus/webhook`);
 
   return `${PRODAMUS_API_URL}?${queryParams.toString()}`;

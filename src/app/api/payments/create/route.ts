@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       amount: course.price,
       email: session.email,
       courseName: course.title,
+      courseSlug: course.slug,
     });
 
     return NextResponse.json({ paymentUrl, transactionId: transaction.id });
