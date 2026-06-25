@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTextCourse, getLessonContent, getModuleNumber } from "@/lib/courses-loader";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
+import type { ComponentProps } from "react";
 import Image from "next/image";
 import { CodeBlock } from "@/components/shared/CodeBlock";
 import { Quiz } from "@/components/shared/Quiz";
@@ -38,6 +40,24 @@ function MdxImage(props: React.ComponentProps<typeof Image>) {
 const mdxComponents = {
     img: MdxImage,
     pre: CodeBlock,
+    // Аккуратные таблицы вместо «чёрточек» (GFM включён через remark-gfm).
+    table: (props: ComponentProps<"table">) => (
+        <div className="not-prose my-6 overflow-x-auto rounded-lg border">
+            <table className="w-full border-collapse text-sm" {...props} />
+        </div>
+    ),
+    thead: (props: ComponentProps<"thead">) => (
+        <thead className="bg-muted/60 text-foreground" {...props} />
+    ),
+    th: (props: ComponentProps<"th">) => (
+        <th className="border-b px-4 py-2.5 text-left font-semibold" {...props} />
+    ),
+    td: (props: ComponentProps<"td">) => (
+        <td className="border-b px-4 py-2.5 align-top" {...props} />
+    ),
+    tr: (props: ComponentProps<"tr">) => (
+        <tr className="last:[&>td]:border-b-0 even:bg-muted/20" {...props} />
+    ),
 };
 
 export default async function LessonPage({ params }: Props) {
@@ -120,7 +140,7 @@ export default async function LessonPage({ params }: Props) {
                 <MDXRemote
                     source={lessonData.content}
                     components={mdxComponents}
-                    options={{ mdxOptions: { format: "md" } }}
+                    options={{ mdxOptions: { remarkPlugins: [remarkGfm], format: "md" } }}
                 />
             </article>
 
